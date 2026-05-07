@@ -1,7 +1,7 @@
 /**
  * useProjects.js
  * Hook personnalisé pour gérer l'état et les opérations sur les projets.
- * Centralise la logique fetch/add/update/delete pour éviter la répétition.
+ * Centralise la logique fetch/add/update/delete avec l'API Express.js + MongoDB.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -23,9 +23,11 @@ export function useProjects() {
             setLoading(true)
             setError(null)
             const data = await getAllProjects()
+            console.log('Projets chargés:', data)
             setProjects(data)
-        } catch {
-            setError('Impossible de charger les projets. Vérifiez que json-server est lancé sur le port 3001.')
+        } catch (err) {
+            console.error('Erreur chargement projets:', err)
+            setError('Impossible de charger les projets. Vérifiez que le serveur Express.js est lancé sur le port 5000.')
         } finally {
             setLoading(false)
         }
@@ -43,14 +45,14 @@ export function useProjects() {
     // ── Mise à jour ───────────────────────────────────────────────
     const updateProject = useCallback(async (id, data) => {
         const updated = await apiUpdate(id, data)
-        setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))
+        setProjects(prev => prev.map(p => (p._id === id || p.id === id) ? updated : p))
         return updated
     }, [])
 
     // ── Suppression ───────────────────────────────────────────────
     const deleteProject = useCallback(async (id) => {
         await apiDelete(id)
-        setProjects(prev => prev.filter(p => p.id !== id))
+        setProjects(prev => prev.filter(p => p._id !== id && p.id !== id))
     }, [])
 
     return { projects, loading, error, fetchProjects, addProject, updateProject, deleteProject }

@@ -1,70 +1,225 @@
-# Getting Started with Create React App
+# Portfolio React - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Application React pour gérer un portfolio de projets, connectée à une API Express.js + MongoDB.
 
-## Available Scripts
+## Configuration
 
-In the project directory, you can run:
+### Backend requis
+Le backend Express.js doit être démarré sur le port 5000.
 
-### `npm start`
+```bash
+cd ../express-js
+npm run dev
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### URL de l'API
+```javascript
+http://localhost:5000/api/projects
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Configurée dans `src/services/projectService.js`
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Installation
 
-### `npm run build`
+```bash
+npm install
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Démarrage
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm start
+```
 
-### `npm run eject`
+Ouvre http://localhost:3000 dans le navigateur.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Structure du projet
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```
+src/
+├── components/          # Composants React
+│   ├── Projet.jsx       # Carte projet
+│   ├── AjouterProjet.jsx
+│   ├── EditerProjet.jsx
+│   ├── DetaillerProjet.jsx
+│   ├── Navbar.jsx
+│   ├── Footer.jsx
+│   └── ui/              # Composants UI réutilisables
+├── pages/               # Pages
+│   ├── Home.jsx
+│   ├── Contact.jsx
+│   └── NotFound.jsx
+├── services/            # Services API
+│   └── projectService.js  # Appels API vers Express
+├── hooks/               # Hooks personnalisés
+│   ├── useProjects.js   # Gestion état projets
+│   └── useProject.js    # Gestion projet unique
+├── App.jsx              # Routes
+└── index.js             # Point d'entrée
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Services API
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### `src/services/projectService.js`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Toutes les fonctions pour communiquer avec l'API Express.js :
 
-### Code Splitting
+```javascript
+getAllProjects()        // GET /api/projects
+getProjectById(id)      // GET /api/projects/:id
+addProject(data)        // POST /api/projects
+updateProject(id, data) // PUT /api/projects/:id
+deleteProject(id)       // DELETE /api/projects/:id
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+**Normalisation des IDs :**
+MongoDB utilise `_id`, React utilise `id`. La fonction `normalizeProject()` convertit automatiquement `_id` en `id`.
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Hooks personnalisés
 
-### Making a Progressive Web App
+### `useProjects()`
+Gère la liste complète des projets.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```javascript
+const { projects, loading, error, fetchProjects, addProject, updateProject, deleteProject } = useProjects()
+```
 
-### Advanced Configuration
+### `useProject(id)`
+Gère un projet unique.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```javascript
+const { project, loading, error } = useProject(id)
+```
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Fonctionnalités
 
-### `npm run build` fails to minify
+- ✅ Lister tous les projets
+- ✅ Voir les détails d'un projet
+- ✅ Ajouter un nouveau projet
+- ✅ Modifier un projet existant
+- ✅ Supprimer un projet
+- ✅ Validation des formulaires
+- ✅ Gestion des erreurs
+- ✅ Loading states
+- ✅ Responsive design (Tailwind CSS)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+## Technologies
+
+- **React** 19.2.5
+- **React Router** 7.14.1
+- **Tailwind CSS** (via input.css)
+- **Fetch API** (requêtes HTTP)
+
+---
+
+## Scripts disponibles
+
+```bash
+npm start       # Démarrer en mode développement
+npm run build   # Build pour production
+npm test        # Lancer les tests
+```
+
+---
+
+## Configuration CORS
+
+Le backend Express doit autoriser l'origine React :
+
+```env
+# express-js/.env
+CORS_ORIGIN=http://localhost:3000
+```
+
+---
+
+## Gestion des erreurs
+
+### Backend non démarré
+```
+Impossible de charger les projets. 
+Vérifiez que le serveur Express.js est lancé sur le port 5000.
+```
+
+### Validation
+Les erreurs de validation du backend sont affichées dans l'interface.
+
+---
+
+## Différences avec json-server
+
+| Aspect | json-server | Express + MongoDB |
+|--------|-------------|-------------------|
+| URL | `localhost:3001/projects` | `localhost:5000/api/projects` |
+| ID | Numérique (1, 2, 3) | String (`_id`) |
+| Validation | Aucune | express-validator |
+| Production | Non recommandé | Production-ready |
+
+---
+
+## Documentation
+
+- **BACKEND_CONNECTION.md** - Configuration de la connexion backend
+- **../INTEGRATION_REACT_EXPRESS.md** - Documentation complète de l'intégration
+- **../MODIFICATIONS_REACT.md** - Détails des modifications apportées
+- **../TESTS_INTEGRATION.md** - Guide de tests
+
+---
+
+## Démarrage rapide
+
+### 1. Démarrer le backend
+```bash
+cd ../express-js
+npm run dev
+```
+
+### 2. Démarrer le frontend
+```bash
+npm start
+```
+
+### 3. Ouvrir le navigateur
+http://localhost:3000
+
+---
+
+## Dépannage
+
+### Erreur : "Failed to fetch"
+**Solution :** Vérifier que Express tourne sur port 5000
+
+### Erreur : "CORS policy"
+**Solution :** Vérifier `CORS_ORIGIN` dans `express-js/.env`
+
+### Projets ne s'affichent pas
+**Solution :** 
+1. Vérifier que MongoDB est connecté
+2. Ouvrir la console du navigateur (F12)
+3. Vérifier les erreurs réseau
+
+---
+
+## Auteur
+
+Kiro AI - 28 Avril 2026
+
+---
+
+## Licence
+
+Ce projet est un projet éducatif.
