@@ -15,8 +15,33 @@ const PORT = process.env.PORT || 5000;
 
 connectDB();
 
+// Configuration CORS pour accepter plusieurs origines
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://172.16.146.1:3000'
+];
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: function (origin, callback) {
+        console.log('Origin reçue:', origin);
+        
+        // Autoriser les requêtes sans origin (comme Postman, curl)
+        if (!origin) return callback(null, true);
+        
+        // En développement, autoriser toutes les origines
+        if (process.env.NODE_ENV === 'development') {
+            return callback(null, true);
+        }
+        
+        // En production, vérifier la liste
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.error('Origin non autorisée:', origin);
+            callback(new Error('Non autorisé par CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
