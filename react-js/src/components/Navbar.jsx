@@ -10,7 +10,7 @@ export default function Navbar() {
                     <img
                         src="/assets/logo.png"
                         alt="Logo"
-                        className="h-12 inline-block"
+                        className="h-20 inline-block"
                         onError={e => { e.target.style.display = 'none' }}
                     />
                 </NavLink>
