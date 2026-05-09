@@ -1,32 +1,43 @@
+version: '3.8'
+
 services:
+  # Service MongoDB
   mongodb:
     image: mongo:7.0.15
     container_name: portfolio-mongodb
+    restart: unless-stopped
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: portfolio
     volumes:
       - mongodb_data:/data/db
     networks:
       - portfolio-network
     user: "999:999"
 
+  # Service Backend Express.js (depuis Docker Hub)
   backend:
-    build: ./express-js
+    image: VOTRE_USERNAME/portfolio-backend:latest
     container_name: portfolio-backend
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       NODE_ENV: production
       PORT: 5000
       MONGODB_URI: mongodb://mongodb:27017/portfolio
+      CORS_ORIGIN: http://localhost:3000
     depends_on:
       - mongodb
     networks:
       - portfolio-network
 
+  # Service Frontend React (depuis Docker Hub)
   frontend:
-    build: ./react-js
+    image: VOTRE_USERNAME/portfolio-frontend:latest
     container_name: portfolio-frontend
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
@@ -36,6 +47,8 @@ services:
 
 networks:
   portfolio-network:
+    driver: bridge
 
 volumes:
   mongodb_data:
+    driver: local

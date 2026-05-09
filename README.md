@@ -317,7 +317,7 @@ npm run build        # Build de production
 
 ## Auteur
 
-**Kiro AI**  
+**Groupe 1**  
 Date : 28 Avril 2026  
 Version : 1.0
 
