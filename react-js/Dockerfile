@@ -1,19 +1,29 @@
 # Étape 1: Build avec Node.js
-FROM node:20-alpine AS build
+FROM node:20.18.1-alpine3.20 AS build
 
 # Créer utilisateur pour le build
 RUN addgroup -g 1001 nodejs && adduser -S -u 1001 nodejs
 
 WORKDIR /app
+
+# Copier et installer en tant que root
 COPY package*.json ./
 RUN npm ci
-COPY --chown=nodejs:nodejs . .
 
+# Copier le code
+COPY . .
+
+# Créer le dossier build et donner les permissions
+RUN mkdir -p build && chown -R nodejs:nodejs /app
+
+# Passer à l'utilisateur non-root
 USER nodejs
+
+# Build React
 RUN npm run build
 
 # Étape 2: Production avec Nginx
-FROM nginx:alpine
+FROM nginx:1.27.3-alpine3.20
 
 # Créer utilisateur pour Nginx
 RUN addgroup -g 1001 nginx-app && adduser -S -u 1001 nginx-app
