@@ -1,6 +1,9 @@
-# Portfolio Application - Docker Images
+# 🎨 Portfolio Application - Docker Images
 
 Application portfolio complète avec Express.js, React et MongoDB.
+
+**Auteur** : dembouz7  
+**Repository GitHub** : [projet_fil_rouge](https://github.com/dembouz7/projet_fil_rouge)
 
 ## 🚀 Démarrage Rapide
 
@@ -30,7 +33,7 @@ services:
       - portfolio-network
 
   backend:
-    image: VOTRE_USERNAME/portfolio-backend:latest
+    image: dembouz7/portfolio-backend:latest
     container_name: portfolio-backend
     restart: unless-stopped
     ports:
@@ -45,7 +48,7 @@ services:
       - portfolio-network
 
   frontend:
-    image: VOTRE_USERNAME/portfolio-frontend:latest
+    image: dembouz7/portfolio-frontend:latest
     container_name: portfolio-frontend
     restart: unless-stopped
     ports:
@@ -82,15 +85,16 @@ docker exec -it portfolio-backend npm run seed
 
 ### Backend (Express.js + MongoDB)
 ```bash
-docker pull VOTRE_USERNAME/portfolio-backend:latest
-docker pull VOTRE_USERNAME/portfolio-backend:1.0.0
+docker pull dembouz7/portfolio-backend:latest
+docker pull dembouz7/portfolio-backend:1.0.0
 ```
 
 **Caractéristiques :**
-- Node.js 20.18.1 Alpine
+- Node.js 20.18.1 Alpine 3.20
 - Express.js 4.18.2
 - Mongoose 6.12.0
-- Utilisateur non-root (nodejs)
+- Utilisateur non-root (nodejs, UID 1001)
+- Multi-stage build
 - Taille : ~150 MB
 
 **Variables d'environnement :**
@@ -100,21 +104,24 @@ docker pull VOTRE_USERNAME/portfolio-backend:1.0.0
 
 ### Frontend (React + Nginx)
 ```bash
-docker pull VOTRE_USERNAME/portfolio-frontend:latest
-docker pull VOTRE_USERNAME/portfolio-frontend:1.0.0
+docker pull dembouz7/portfolio-frontend:latest
+docker pull dembouz7/portfolio-frontend:1.0.0
 ```
 
 **Caractéristiques :**
-- Nginx 1.27.3 Alpine
-- React 18.x
+- Nginx 1.27.3 Alpine 3.20
+- React 19.x
 - Multi-stage build
-- Utilisateur non-root (nginx-app)
+- Utilisateur non-root (nginx-app, UID 1001)
 - Taille : ~50 MB
 
 ## 🔒 Sécurité
 
-- ✅ Utilisateurs non-root
-- ✅ Versions spécifiques (pas de `latest`)
+- ✅ Utilisateurs non-root (UID 1001)
+- ✅ Versions spécifiques et sécurisées :
+  - node:20.18.1-alpine3.20
+  - nginx:1.27.3-alpine3.20
+  - mongo:7.0.15
 - ✅ Images Alpine (légères et sécurisées)
 - ✅ Multi-stage build
 - ✅ Conformité OWASP et CIS Benchmark
@@ -143,8 +150,8 @@ docker exec -it portfolio-backend sh
 
 ## 📚 Documentation
 
-- GitHub : [Lien vers votre repo]
-- Documentation complète : [Lien]
+- GitHub : https://github.com/dembouz7/projet_fil_rouge
+- Docker Hub : https://hub.docker.com/u/dembouz7
 
 ## 📝 Licence
 
@@ -152,4 +159,4 @@ MIT
 
 ## 👤 Auteur
 
-Votre Nom
+Dembouz7
