@@ -57,8 +57,9 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 script {
-                    // Stop and remove existing containers
-                    bat 'docker-compose -f docker-compose.hub.yml down || echo "No containers to stop"'
+                    // Stop and remove existing containers forcefully
+                    bat 'docker-compose -f docker-compose.hub.yml down -v || echo "No containers to stop"'
+                    bat 'docker rm -f portfolio-mongodb portfolio-backend portfolio-frontend || echo "No individual containers to remove"'
                     // Pull latest images
                     bat 'docker-compose -f docker-compose.hub.yml pull'
                     // Start containers
