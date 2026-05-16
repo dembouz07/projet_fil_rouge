@@ -11,18 +11,18 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Cloning repository...'
+                echo '📥 Cloning repository...'
                 checkout scm
             }
         }
         
         stage('Build Backend') {
             steps {
-                echo 'Building Backend Docker image...'
+                echo '🏗️ Building Backend Docker image...'
                 script {
                     dir('express-js') {
-                        sh "docker build -t ${BACKEND_IMAGE}:${VERSION} ."
-                        sh "docker tag ${BACKEND_IMAGE}:${VERSION} ${BACKEND_IMAGE}:latest"
+                        bat "docker build -t ${BACKEND_IMAGE}:${VERSION} ."
+                        bat "docker tag ${BACKEND_IMAGE}:${VERSION} ${BACKEND_IMAGE}:latest"
                     }
                 }
             }
@@ -30,11 +30,11 @@ pipeline {
         
         stage('Build Frontend') {
             steps {
-                echo 'Building Frontend Docker image...'
+                echo '🏗️ Building Frontend Docker image...'
                 script {
                     dir('react-js') {
-                        sh "docker build -t ${FRONTEND_IMAGE}:${VERSION} ."
-                        sh "docker tag ${FRONTEND_IMAGE}:${VERSION} ${FRONTEND_IMAGE}:latest"
+                        bat "docker build -t ${FRONTEND_IMAGE}:${VERSION} ."
+                        bat "docker tag ${FRONTEND_IMAGE}:${VERSION} ${FRONTEND_IMAGE}:latest"
                     }
                 }
             }
@@ -42,11 +42,11 @@ pipeline {
         
         stage('Test Backend') {
             steps {
-                echo 'Running Backend tests...'
+                echo '🧪 Running Backend tests...'
                 script {
                     dir('express-js') {
-                        sh 'npm install'
-                        sh 'npm test || echo "No tests configured"'
+                        bat 'npm install'
+                        bat 'npm test || echo "No tests configured"'
                     }
                 }
             }
@@ -54,11 +54,11 @@ pipeline {
         
         stage('Test Frontend') {
             steps {
-                echo 'Running Frontend tests...'
+                echo '🧪 Running Frontend tests...'
                 script {
                     dir('react-js') {
-                        sh 'npm install'
-                        sh 'npm test -- --passWithNoTests || echo "No tests configured"'
+                        bat 'npm install'
+                        bat 'npm test -- --passWithNoTests || echo "No tests configured"'
                     }
                 }
             }
@@ -66,23 +66,23 @@ pipeline {
         
         stage('Push to Docker Hub') {
             steps {
-                echo 'Pushing images to Docker Hub...'
+                echo '🚀 Pushing images to Docker Hub...'
                 script {
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                    sh "docker push ${BACKEND_IMAGE}:${VERSION}"
-                    sh "docker push ${BACKEND_IMAGE}:latest"
-                    sh "docker push ${FRONTEND_IMAGE}:${VERSION}"
-                    sh "docker push ${FRONTEND_IMAGE}:latest"
+                    bat "docker login -u %DOCKERHUB_CREDENTIALS_USR% -p %DOCKERHUB_CREDENTIALS_PSW%"
+                    bat "docker push ${BACKEND_IMAGE}:${VERSION}"
+                    bat "docker push ${BACKEND_IMAGE}:latest"
+                    bat "docker push ${FRONTEND_IMAGE}:${VERSION}"
+                    bat "docker push ${FRONTEND_IMAGE}:latest"
                 }
             }
         }
         
         stage('Deploy') {
             steps {
-                echo 'Deploying application...'
+                echo '🚢 Deploying application...'
                 script {
-                    sh 'docker-compose -f docker-compose.hub.yml pull'
-                    sh 'docker-compose -f docker-compose.hub.yml up -d'
+                    bat 'docker-compose -f docker-compose.hub.yml pull'
+                    bat 'docker-compose -f docker-compose.hub.yml up -d'
                 }
             }
         }
@@ -90,11 +90,11 @@ pipeline {
     
     post {
         always {
-            echo 'Cleaning up...'
-            sh 'docker logout'
+            echo '🧹 Cleaning up...'
+            bat 'docker logout'
         }
         success {
-            echo 'Pipeline completed successfully!'
+            echo '✅ Pipeline completed successfully!'
             echo "Images pushed:"
             echo "  - ${BACKEND_IMAGE}:${VERSION}"
             echo "  - ${BACKEND_IMAGE}:latest"
@@ -102,7 +102,7 @@ pipeline {
             echo "  - ${FRONTEND_IMAGE}:latest"
         }
         failure {
-            echo 'Pipeline failed!'
+            echo '❌ Pipeline failed!'
         }
     }
 }
