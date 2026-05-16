@@ -57,7 +57,11 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 script {
+                    // Stop and remove existing containers
+                    bat 'docker-compose -f docker-compose.hub.yml down || echo "No containers to stop"'
+                    // Pull latest images
                     bat 'docker-compose -f docker-compose.hub.yml pull'
+                    // Start containers
                     bat 'docker-compose -f docker-compose.hub.yml up -d'
                 }
             }
