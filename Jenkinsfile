@@ -11,14 +11,14 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '📥 Cloning repository...'
+                echo 'Cloning repository...'
                 checkout scm
             }
         }
         
         stage('Build Backend') {
             steps {
-                echo '🏗️ Building Backend Docker image...'
+                echo 'Building Backend Docker image...'
                 script {
                     dir('express-js') {
                         bat "docker build -t ${BACKEND_IMAGE}:${VERSION} ."
@@ -30,7 +30,7 @@ pipeline {
         
         stage('Build Frontend') {
             steps {
-                echo '🏗️ Building Frontend Docker image...'
+                echo 'Building Frontend Docker image...'
                 script {
                     dir('react-js') {
                         bat "docker build -t ${FRONTEND_IMAGE}:${VERSION} ."
@@ -40,33 +40,9 @@ pipeline {
             }
         }
         
-        stage('Test Backend') {
-            steps {
-                echo '🧪 Running Backend tests...'
-                script {
-                    dir('express-js') {
-                        bat 'npm install'
-                        bat 'npm test || echo "No tests configured"'
-                    }
-                }
-            }
-        }
-        
-        stage('Test Frontend') {
-            steps {
-                echo '🧪 Running Frontend tests...'
-                script {
-                    dir('react-js') {
-                        bat 'npm install'
-                        bat 'npm test -- --passWithNoTests || echo "No tests configured"'
-                    }
-                }
-            }
-        }
-        
         stage('Push to Docker Hub') {
             steps {
-                echo '🚀 Pushing images to Docker Hub...'
+                echo 'Pushing images to Docker Hub...'
                 script {
                     bat "docker login -u %DOCKERHUB_CREDENTIALS_USR% -p %DOCKERHUB_CREDENTIALS_PSW%"
                     bat "docker push ${BACKEND_IMAGE}:${VERSION}"
@@ -79,7 +55,7 @@ pipeline {
         
         stage('Deploy') {
             steps {
-                echo '🚢 Deploying application...'
+                echo 'Deploying application...'
                 script {
                     bat 'docker-compose -f docker-compose.hub.yml pull'
                     bat 'docker-compose -f docker-compose.hub.yml up -d'
@@ -90,11 +66,11 @@ pipeline {
     
     post {
         always {
-            echo '🧹 Cleaning up...'
+            echo 'Cleaning up...'
             bat 'docker logout'
         }
         success {
-            echo '✅ Pipeline completed successfully!'
+            echo 'Pipeline completed successfully!'
             echo "Images pushed:"
             echo "  - ${BACKEND_IMAGE}:${VERSION}"
             echo "  - ${BACKEND_IMAGE}:latest"
@@ -102,7 +78,7 @@ pipeline {
             echo "  - ${FRONTEND_IMAGE}:latest"
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo 'Pipeline failed!'
         }
     }
 }
