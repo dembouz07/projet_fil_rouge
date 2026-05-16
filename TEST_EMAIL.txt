@@ -1,0 +1,5 @@
+Test de notification email Jenkins
+Date: 16 Mai 2026
+Email: ousinfaye4@gmail.com
+
+Ce fichier a ete cree pour tester le declenchement automatique du pipeline Jenkins et l'envoi d'email.

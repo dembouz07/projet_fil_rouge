@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         BACKEND_IMAGE = 'dembouz7/portfolio-backend'
@@ -57,9 +61,12 @@ pipeline {
             steps {
                 echo 'Deploying application...'
                 script {
-                    // Stop and remove existing containers forcefully
-                    bat 'docker-compose -f docker-compose.hub.yml down -v || echo "No containers to stop"'
-                    bat 'docker rm -f portfolio-mongodb portfolio-backend portfolio-frontend || echo "No individual containers to remove"'
+                    // Stop all running containers first
+                    bat 'docker stop portfolio-mongodb portfolio-backend portfolio-frontend || echo "No containers to stop"'
+                    // Remove containers forcefully
+                    bat 'docker rm -f portfolio-mongodb portfolio-backend portfolio-frontend || echo "No containers to remove"'
+                    // Clean up with docker-compose
+                    bat 'docker-compose -f docker-compose.hub.yml down -v || echo "Docker compose cleanup done"'
                     // Pull latest images
                     bat 'docker-compose -f docker-compose.hub.yml pull'
                     // Start containers
@@ -81,9 +88,50 @@ pipeline {
             echo "  - ${BACKEND_IMAGE}:latest"
             echo "  - ${FRONTEND_IMAGE}:${VERSION}"
             echo "  - ${FRONTEND_IMAGE}:latest"
+            
+            emailext(
+                subject: "Build reussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build reussi</h2>
+                    <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                    <p><strong>Statut:</strong> <span style="color: green;">SUCCES</span></p>
+                    <p><strong>Duree:</strong> ${currentBuild.durationString}</p>
+                    
+                    <h3>Images deployees:</h3>
+                    <ul>
+                        <li>${BACKEND_IMAGE}:${VERSION}</li>
+                        <li>${BACKEND_IMAGE}:latest</li>
+                        <li>${FRONTEND_IMAGE}:${VERSION}</li>
+                        <li>${FRONTEND_IMAGE}:latest</li>
+                    </ul>
+                    
+                    <p><a href="${env.BUILD_URL}">Voir les details du build</a></p>
+                """,
+                to: 'ousinfaye4@gmail.com',
+                mimeType: 'text/html'
+            )
         }
         failure {
             echo 'Pipeline failed!'
+            
+            emailext(
+                subject: "Build echoue : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build echoue</h2>
+                    <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                    <p><strong>Statut:</strong> <span style="color: red;">ECHEC</span></p>
+                    <p><strong>Duree:</strong> ${currentBuild.durationString}</p>
+                    
+                    <h3>Erreur:</h3>
+                    <p>Consultez les logs pour plus de details.</p>
+                    
+                    <p><a href="${env.BUILD_URL}console">Voir les logs du build</a></p>
+                """,
+                to: 'ousinfaye4@gmail.com',
+                mimeType: 'text/html'
+            )
         }
     }
 }
