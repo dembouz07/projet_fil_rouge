@@ -1,23 +1,26 @@
 import { jest } from '@jest/globals';
-import {
-  getAllProjects,
-  getProjectById,
-  createProject,
-  updateProject,
-  deleteProject
-} from '../projectController.js';
-import Project from '../../models/Project.js';
 
-// Mock du modèle Project
+// Mock du modèle Project AVANT l'import
+const mockFind = jest.fn();
+const mockFindById = jest.fn();
+const mockCreate = jest.fn();
+const mockFindByIdAndUpdate = jest.fn();
+const mockFindByIdAndDelete = jest.fn();
+
 jest.unstable_mockModule('../../models/Project.js', () => ({
   default: {
-    find: jest.fn(),
-    findById: jest.fn(),
-    create: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-    findByIdAndDelete: jest.fn()
+    find: mockFind,
+    findById: mockFindById,
+    create: mockCreate,
+    findByIdAndUpdate: mockFindByIdAndUpdate,
+    findByIdAndDelete: mockFindByIdAndDelete
   }
 }));
+
+// Import des modules APRÈS le mock
+const { getAllProjects, getProjectById, createProject, updateProject, deleteProject } = 
+  await import('../projectController.js');
+const Project = (await import('../../models/Project.js')).default;
 
 describe('Project Controller', () => {
   let req, res, next;
@@ -42,7 +45,7 @@ describe('Project Controller', () => {
         { _id: '2', title: 'Projet 2', description: 'Description 2' }
       ];
 
-      Project.find.mockReturnValue({
+      mockFind.mockReturnValue({
         sort: jest.fn().mockResolvedValue(mockProjects)
       });
 
@@ -58,7 +61,7 @@ describe('Project Controller', () => {
 
     it('devrait gérer les erreurs', async () => {
       const error = new Error('Database error');
-      Project.find.mockReturnValue({
+      mockFind.mockReturnValue({
         sort: jest.fn().mockRejectedValue(error)
       });
 
@@ -73,7 +76,7 @@ describe('Project Controller', () => {
       const mockProject = { _id: '1', title: 'Projet 1', description: 'Description 1' };
       req.params.id = '1';
 
-      Project.findById.mockResolvedValue(mockProject);
+      mockFindById.mockResolvedValue(mockProject);
 
       await getProjectById(req, res, next);
 
@@ -86,7 +89,7 @@ describe('Project Controller', () => {
 
     it('devrait retourner 404 si le projet n\'existe pas', async () => {
       req.params.id = '999';
-      Project.findById.mockResolvedValue(null);
+      mockFindById.mockResolvedValue(null);
 
       await getProjectById(req, res, next);
 
@@ -108,7 +111,7 @@ describe('Project Controller', () => {
       req.body = newProject;
 
       const createdProject = { _id: '1', ...newProject };
-      Project.create.mockResolvedValue(createdProject);
+      mockCreate.mockResolvedValue(createdProject);
 
       await createProject(req, res, next);
 
@@ -128,7 +131,7 @@ describe('Project Controller', () => {
       };
 
       const createdProject = { _id: '1', ...req.body };
-      Project.create.mockResolvedValue(createdProject);
+      mockCreate.mockResolvedValue(createdProject);
 
       await createProject(req, res, next);
 
@@ -146,7 +149,7 @@ describe('Project Controller', () => {
       req.body = updatedData;
 
       const updatedProject = { _id: '1', ...updatedData };
-      Project.findByIdAndUpdate.mockResolvedValue(updatedProject);
+      mockFindByIdAndUpdate.mockResolvedValue(updatedProject);
 
       await updateProject(req, res, next);
 
@@ -162,7 +165,7 @@ describe('Project Controller', () => {
       req.params.id = '999';
       req.body = { title: 'Test' };
 
-      Project.findByIdAndUpdate.mockResolvedValue(null);
+      mockFindByIdAndUpdate.mockResolvedValue(null);
 
       await updateProject(req, res, next);
 
@@ -179,7 +182,7 @@ describe('Project Controller', () => {
       req.params.id = '1';
       const deletedProject = { _id: '1', title: 'Projet à supprimer' };
 
-      Project.findByIdAndDelete.mockResolvedValue(deletedProject);
+      mockFindByIdAndDelete.mockResolvedValue(deletedProject);
 
       await deleteProject(req, res, next);
 
@@ -194,7 +197,7 @@ describe('Project Controller', () => {
     it('devrait retourner 404 si le projet n\'existe pas', async () => {
       req.params.id = '999';
 
-      Project.findByIdAndDelete.mockResolvedValue(null);
+      mockFindByIdAndDelete.mockResolvedValue(null);
 
       await deleteProject(req, res, next);
 
