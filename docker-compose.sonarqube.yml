@@ -17,6 +17,7 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
     networks:
       - sonarqube-network
+      - portfolio-network
     depends_on:
       - sonarqube-db
 
@@ -35,6 +36,8 @@ services:
 networks:
   sonarqube-network:
     driver: bridge
+  portfolio-network:
+    external: true
 
 volumes:
   sonarqube_data:
