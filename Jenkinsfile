@@ -7,7 +7,7 @@ pipeline {
     }
     
     triggers {
-        pollSCM('* * * * *')
+        pollSCM('H/5 * * * *')
     }
     
     environment {
@@ -21,15 +21,33 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Cloning repository...'
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/master']],
-                    extensions: [[$class: 'CleanBeforeCheckout']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/dembouz07/projet_fil_rouge.git',
-                        credentialsId: 'github-credential'
-                    ]]
-                ])
+                checkout scm
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarQube Scanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=portfolio-cicd \
+                            -Dsonar.projectName='Portfolio CI/CD' \
+                            -Dsonar.sources=express-js/src,react-js/src \
+                            -Dsonar.exclusions='**/node_modules/**,**/build/**,**/dist/**' \
+                            -Dsonar.javascript.lcov.reportPaths=express-js/coverage/lcov.info,react-js/coverage/lcov.info
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
         
@@ -91,12 +109,6 @@ pipeline {
         }
         success {
             echo 'Pipeline completed successfully!'
-            echo "Images pushed:"
-            echo "  - ${BACKEND_IMAGE}:${VERSION}"
-            echo "  - ${BACKEND_IMAGE}:latest"
-            echo "  - ${FRONTEND_IMAGE}:${VERSION}"
-            echo "  - ${FRONTEND_IMAGE}:latest"
-            
             emailext(
                 subject: "Build reussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
@@ -104,16 +116,7 @@ pipeline {
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
                     <p><strong>Statut:</strong> <span style="color: green;">SUCCES</span></p>
-                    <p><strong>Duree:</strong> ${currentBuild.durationString}</p>
-                    
-                    <h3>Images deployees:</h3>
-                    <ul>
-                        <li>${BACKEND_IMAGE}:${VERSION}</li>
-                        <li>${BACKEND_IMAGE}:latest</li>
-                        <li>${FRONTEND_IMAGE}:${VERSION}</li>
-                        <li>${FRONTEND_IMAGE}:latest</li>
-                    </ul>
-                    
+                    <p><strong>SonarQube:</strong> <a href="http://localhost:9000/dashboard?id=portfolio-cicd">Voir le rapport</a></p>
                     <p><a href="${env.BUILD_URL}">Voir les details du build</a></p>
                 """,
                 to: 'ousinfaye4@gmail.com',
@@ -122,7 +125,6 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed!'
-            
             emailext(
                 subject: "Build echoue : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
@@ -130,11 +132,6 @@ pipeline {
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
                     <p><strong>Statut:</strong> <span style="color: red;">ECHEC</span></p>
-                    <p><strong>Duree:</strong> ${currentBuild.durationString}</p>
-                    
-                    <h3>Erreur:</h3>
-                    <p>Consultez les logs pour plus de details.</p>
-                    
                     <p><a href="${env.BUILD_URL}console">Voir les logs du build</a></p>
                 """,
                 to: 'ousinfaye4@gmail.com',
