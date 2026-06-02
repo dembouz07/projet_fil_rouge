@@ -1,20 +1,5 @@
 pipeline {
-    agent {
-        label 'master'
-    }
-    
-    parameters {
-        choice(
-            name: 'DEPLOY_TARGET',
-            choices: ['docker-compose', 'kubernetes'],
-            description: 'Choisir la cible de déploiement'
-        )
-        booleanParam(
-            name: 'SKIP_TESTS',
-            defaultValue: false,
-            description: 'Ignorer les tests'
-        )
-    }
+    agent any
     
     parameters {
         choice(
@@ -72,12 +57,12 @@ pipeline {
         }
         
         stage('Quality Gate') {
-    steps {
-        timeout(time: 10, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
         }
-    }
-}
         
         stage('Build Backend') {
             steps {
