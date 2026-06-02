@@ -1,6 +1,19 @@
 pipeline {
     agent any
     
+    parameters {
+        choice(
+            name: 'DEPLOY_TARGET',
+            choices: ['docker-compose', 'kubernetes'],
+            description: 'Choisir la cible de déploiement'
+        )
+        booleanParam(
+            name: 'SKIP_TESTS',
+            defaultValue: false,
+            description: 'Ignorer les tests'
+        )
+    }
+    
     options {
         timeout(time: 2, unit: 'HOURS')
         timestamps()
@@ -88,15 +101,53 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy to Docker Compose') {
+            when {
+                expression { params.DEPLOY_TARGET == 'docker-compose' }
+            }
             steps {
-                echo 'Deploying application...'
+                echo 'Deploying to Docker Compose...'
                 script {
                     sh 'docker stop portfolio-mongodb portfolio-backend portfolio-frontend || true'
                     sh 'docker rm -f portfolio-mongodb portfolio-backend portfolio-frontend || true'
                     sh 'docker-compose -f docker-compose.hub.yml down -v || true'
                     sh 'docker-compose -f docker-compose.hub.yml pull'
                     sh 'docker-compose -f docker-compose.hub.yml up -d'
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            when {
+                expression { params.DEPLOY_TARGET == 'kubernetes' }
+            }
+            steps {
+                echo 'Deploying to Kubernetes...'
+                script {
+                    // Mettre à jour les images dans les deployments
+                    sh """
+                        kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
+                        kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
+                    """
+                    
+                    // Si les deployments n'existent pas, les créer
+                    sh """
+                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/mongodb-deployment.yaml
+                        kubectl apply -f k8s/backend-deployment.yaml
+                        kubectl apply -f k8s/frontend-deployment.yaml
+                        kubectl apply -f k8s/ingress.yaml
+                    """
+                    
+                    // Attendre que les pods soient prêts
+                    sh """
+                        kubectl wait --for=condition=ready pod -l app=mongodb -n portfolio --timeout=300s
+                        kubectl rollout status deployment/backend -n portfolio --timeout=300s
+                        kubectl rollout status deployment/frontend -n portfolio --timeout=300s
+                    """
+                    
+                    // Afficher l'état
+                    sh 'kubectl get all -n portfolio'
                 }
             }
         }
@@ -110,14 +161,27 @@ pipeline {
         success {
             echo 'Pipeline completed successfully!'
             emailext(
-                subject: "Build reussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                subject: "✅ Build réussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2>Build reussi</h2>
+                    <h2>✅ Build réussi</h2>
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
-                    <p><strong>Statut:</strong> <span style="color: green;">SUCCES</span></p>
-                    <p><strong>SonarQube:</strong> <a href="http://localhost:9000/dashboard?id=portfolio-cicd">Voir le rapport</a></p>
-                    <p><a href="${env.BUILD_URL}">Voir les details du build</a></p>
+                    <p><strong>Version:</strong> ${VERSION}</p>
+                    <p><strong>Cible de déploiement:</strong> ${params.DEPLOY_TARGET}</p>
+                    <p><strong>Statut:</strong> <span style="color: green;">SUCCÈS</span></p>
+                    <hr>
+                    <h3>Images Docker:</h3>
+                    <ul>
+                        <li><strong>Backend:</strong> ${BACKEND_IMAGE}:${VERSION}</li>
+                        <li><strong>Frontend:</strong> ${FRONTEND_IMAGE}:${VERSION}</li>
+                    </ul>
+                    <hr>
+                    <h3>Liens utiles:</h3>
+                    <ul>
+                        <li><a href="http://localhost:9000/dashboard?id=portfolio-cicd">Rapport SonarQube</a></li>
+                        <li><a href="${env.BUILD_URL}">Détails du build Jenkins</a></li>
+                        ${params.DEPLOY_TARGET == 'kubernetes' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : '<li><a href="http://localhost:3000">Application Docker Compose</a></li>'}
+                    </ul>
                 """,
                 to: 'ousinfaye4@gmail.com',
                 mimeType: 'text/html'
@@ -126,13 +190,16 @@ pipeline {
         failure {
             echo 'Pipeline failed!'
             emailext(
-                subject: "Build echoue : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                subject: "❌ Build échoué : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2>Build echoue</h2>
+                    <h2>❌ Build échoué</h2>
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
-                    <p><strong>Statut:</strong> <span style="color: red;">ECHEC</span></p>
-                    <p><a href="${env.BUILD_URL}console">Voir les logs du build</a></p>
+                    <p><strong>Version:</strong> ${VERSION}</p>
+                    <p><strong>Cible de déploiement:</strong> ${params.DEPLOY_TARGET}</p>
+                    <p><strong>Statut:</strong> <span style="color: red;">ÉCHEC</span></p>
+                    <hr>
+                    <p><a href="${env.BUILD_URL}console">📋 Voir les logs du build</a></p>
                 """,
                 to: 'ousinfaye4@gmail.com',
                 mimeType: 'text/html'

@@ -2,6 +2,20 @@
 
 Ce dossier contient tous les manifests Kubernetes nécessaires pour déployer l'application Portfolio.
 
+## 📖 Documentation complète
+
+**→ Pour le guide complet de A à Z, consultez : [`../README_KUBERNETES_COMPLET.md`](../README_KUBERNETES_COMPLET.md)**
+
+Ce guide de 82 KB contient :
+- Introduction et concepts Kubernetes
+- Installation complète (Windows/Linux/Mac)
+- Déploiement étape par étape
+- Opérations avancées (Scaling, Rolling Updates)
+- Monitoring et debugging
+- Troubleshooting complet
+- 300+ commandes kubectl
+- Bonnes pratiques de production
+
 ## 📋 Prérequis
 
 - **Kubernetes cluster** (Minikube, Docker Desktop, ou cluster cloud)
