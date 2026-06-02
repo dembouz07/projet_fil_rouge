@@ -163,7 +163,7 @@ pipeline {
             emailext(
                 subject: "✅ Build réussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2>✅ Build réussi</h2>
+                    <h2>✅ Build réussi Good Job</h2>
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
                     <p><strong>Version:</strong> ${VERSION}</p>
