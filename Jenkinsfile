@@ -124,32 +124,39 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes...'
                 script {
-                    docker.image('bitnami/kubectl:latest').inside('-v /root/.kube:/root/.kube --network host') {
-                        // Mettre à jour les images dans les deployments
-                        sh """
-                            kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
-                            kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
-                        """
-                        
-                        // Si les deployments n'existent pas, les créer
-                        sh """
-                            kubectl apply -f k8s/namespace.yaml
-                            kubectl apply -f k8s/mongodb-deployment.yaml
-                            kubectl apply -f k8s/backend-deployment.yaml
-                            kubectl apply -f k8s/frontend-deployment.yaml
-                            kubectl apply -f k8s/ingress.yaml
-                        """
-                        
-                        // Attendre que les pods soient prêts
-                        sh """
-                            kubectl wait --for=condition=ready pod -l app=mongodb -n portfolio --timeout=300s
-                            kubectl rollout status deployment/backend -n portfolio --timeout=300s
-                            kubectl rollout status deployment/frontend -n portfolio --timeout=300s
-                        """
-                        
-                        // Afficher l'état
-                        sh 'kubectl get all -n portfolio'
-                    }
+                    // Installer kubectl si non présent
+                    sh '''
+                        if ! command -v kubectl &> /dev/null; then
+                            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            mv kubectl /usr/local/bin/ || sudo mv kubectl /usr/local/bin/
+                        fi
+                    '''
+                    
+                    // Mettre à jour les images dans les deployments
+                    sh """
+                        kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
+                        kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
+                    """
+                    
+                    // Si les deployments n'existent pas, les créer
+                    sh """
+                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/mongodb-deployment.yaml
+                        kubectl apply -f k8s/backend-deployment.yaml
+                        kubectl apply -f k8s/frontend-deployment.yaml
+                        kubectl apply -f k8s/ingress.yaml
+                    """
+                    
+                    // Attendre que les pods soient prêts
+                    sh """
+                        kubectl wait --for=condition=ready pod -l app=mongodb -n portfolio --timeout=300s || true
+                        kubectl rollout status deployment/backend -n portfolio --timeout=300s
+                        kubectl rollout status deployment/frontend -n portfolio --timeout=300s
+                    """
+                    
+                    // Afficher l'état
+                    sh 'kubectl get all -n portfolio'
                 }
             }
         }
