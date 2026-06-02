@@ -12,7 +12,7 @@ pipeline {
         booleanParam(
             name: 'SKIP_TESTS',
             defaultValue: false,
-            description: 'Ignorer les tests'
+            description: 'Ignorer les test'
         )
     }
     
