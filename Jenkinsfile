@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'master'
+    }
     
     parameters {
         choice(
@@ -120,6 +122,13 @@ pipeline {
         stage('Deploy to Kubernetes') {
             when {
                 expression { params.DEPLOY_TARGET == 'kubernetes' }
+            }
+            agent {
+                docker {
+                    image 'bitnami/kubectl:latest'
+                    args '-v /root/.kube:/root/.kube --network host'
+                    reuseNode true
+                }
             }
             steps {
                 echo 'Deploying to Kubernetes...'
