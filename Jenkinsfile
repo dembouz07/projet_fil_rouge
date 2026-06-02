@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'master'
+    }
     
     parameters {
         choice(
@@ -124,30 +126,32 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes...'
                 script {
-                    // Mettre à jour les images dans les deployments
-                    sh """
-                        kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
-                        kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
-                    """
-                    
-                    // Si les deployments n'existent pas, les créer
-                    sh """
-                        kubectl apply -f k8s/namespace.yaml
-                        kubectl apply -f k8s/mongodb-deployment.yaml
-                        kubectl apply -f k8s/backend-deployment.yaml
-                        kubectl apply -f k8s/frontend-deployment.yaml
-                        kubectl apply -f k8s/ingress.yaml
-                    """
-                    
-                    // Attendre que les pods soient prêts
-                    sh """
-                        kubectl wait --for=condition=ready pod -l app=mongodb -n portfolio --timeout=300s
-                        kubectl rollout status deployment/backend -n portfolio --timeout=300s
-                        kubectl rollout status deployment/frontend -n portfolio --timeout=300s
-                    """
-                    
-                    // Afficher l'état
-                    sh 'kubectl get all -n portfolio'
+                    docker.image('bitnami/kubectl:latest').inside('-v /root/.kube:/root/.kube --network host') {
+                        // Mettre à jour les images dans les deployments
+                        sh """
+                            kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
+                            kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
+                        """
+                        
+                        // Si les deployments n'existent pas, les créer
+                        sh """
+                            kubectl apply -f k8s/namespace.yaml
+                            kubectl apply -f k8s/mongodb-deployment.yaml
+                            kubectl apply -f k8s/backend-deployment.yaml
+                            kubectl apply -f k8s/frontend-deployment.yaml
+                            kubectl apply -f k8s/ingress.yaml
+                        """
+                        
+                        // Attendre que les pods soient prêts
+                        sh """
+                            kubectl wait --for=condition=ready pod -l app=mongodb -n portfolio --timeout=300s
+                            kubectl rollout status deployment/backend -n portfolio --timeout=300s
+                            kubectl rollout status deployment/frontend -n portfolio --timeout=300s
+                        """
+                        
+                        // Afficher l'état
+                        sh 'kubectl get all -n portfolio'
+                    }
                 }
             }
         }
@@ -163,7 +167,7 @@ pipeline {
             emailext(
                 subject: "✅ Build réussi : ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                 body: """
-                    <h2>✅ Build réussi</h2>
+                    <h2>✅ Build réussi Good Job</h2>
                     <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
                     <p><strong>Version:</strong> ${VERSION}</p>
