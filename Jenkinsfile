@@ -1,6 +1,19 @@
 pipeline {
     agent any
     
+    parameters {
+        choice(
+            name: 'DEPLOY_TARGET',
+            choices: ['docker-compose', 'kubernetes'],
+            description: 'Choisir la cible de déploiement'
+        )
+        booleanParam(
+            name: 'SKIP_TESTS',
+            defaultValue: false,
+            description: 'Ignorer les tests'
+        )
+    }
+    
     options {
         timeout(time: 2, unit: 'HOURS')
         timestamps()
