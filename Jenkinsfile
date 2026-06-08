@@ -4,13 +4,18 @@ pipeline {
     parameters {
         choice(
             name: 'DEPLOY_TARGET',
-            choices: ['docker-compose', 'kubernetes'],
+            choices: ['docker-compose', 'kubernetes', 'terraform'],
             description: 'Choisir la cible de déploiement'
         )
         booleanParam(
             name: 'SKIP_TESTS',
             defaultValue: false,
             description: 'Ignorer les tests'
+        )
+        booleanParam(
+            name: 'TERRAFORM_DESTROY',
+            defaultValue: false,
+            description: 'Détruire l\'infrastructure Terraform avant de la recréer'
         )
     }
     
@@ -160,6 +165,69 @@ pipeline {
                 }
             }
         }
+        
+        stage('Deploy with Terraform') {
+            when {
+                expression { params.DEPLOY_TARGET == 'terraform' }
+            }
+            steps {
+                echo 'Deploying to Kubernetes with Terraform...'
+                script {
+                    dir('terraform') {
+                        // Installer Terraform si non présent
+                        sh '''
+                            if ! command -v terraform &> /dev/null; then
+                                wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+                                unzip terraform_1.6.6_linux_amd64.zip
+                                mv terraform /usr/local/bin/ || sudo mv terraform /usr/local/bin/
+                                rm terraform_1.6.6_linux_amd64.zip
+                            fi
+                        '''
+                        
+                        // Vérifier la version de Terraform
+                        sh 'terraform version'
+                        
+                        // Initialiser Terraform
+                        sh 'terraform init'
+                        
+                        // Détruire l'infrastructure existante si demandé
+                        if (params.TERRAFORM_DESTROY) {
+                            echo 'Destroying existing infrastructure...'
+                            sh 'terraform destroy -auto-approve'
+                            sleep 10
+                        }
+                        
+                        // Valider la configuration
+                        sh 'terraform validate'
+                        
+                        // Créer un fichier tfvars avec les images à jour
+                        sh """
+                            cat > terraform.auto.tfvars <<EOF
+backend_image = "${BACKEND_IMAGE}:${VERSION}"
+frontend_image = "${FRONTEND_IMAGE}:${VERSION}"
+backend_replicas = 3
+frontend_replicas = 2
+namespace = "portfolio"
+ingress_host = "portfolio.local"
+mongodb_storage_size = "1Gi"
+EOF
+                        """
+                        
+                        // Afficher le plan
+                        sh 'terraform plan -out=tfplan'
+                        
+                        // Appliquer les changements
+                        sh 'terraform apply -auto-approve tfplan'
+                        
+                        // Afficher les outputs
+                        sh 'terraform output'
+                        
+                        // Vérifier l'état dans Kubernetes
+                        sh 'kubectl get all -n portfolio'
+                    }
+                }
+            }
+        }
     }
     
     post {
@@ -177,6 +245,7 @@ pipeline {
                     <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
                     <p><strong>Version:</strong> ${VERSION}</p>
                     <p><strong>Cible de déploiement:</strong> ${params.DEPLOY_TARGET}</p>
+                    ${params.DEPLOY_TARGET == 'terraform' ? '<p><strong>Terraform Destroy:</strong> ' + params.TERRAFORM_DESTROY + '</p>' : ''}
                     <p><strong>Statut:</strong> <span style="color: green;">SUCCÈS</span></p>
                     <hr>
                     <h3>Images Docker:</h3>
@@ -189,7 +258,7 @@ pipeline {
                     <ul>
                         <li><a href="http://localhost:9000/dashboard?id=portfolio-cicd">Rapport SonarQube</a></li>
                         <li><a href="${env.BUILD_URL}">Détails du build Jenkins</a></li>
-                        ${params.DEPLOY_TARGET == 'kubernetes' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : '<li><a href="http://localhost:3000">Application Docker Compose</a></li>'}
+                        ${params.DEPLOY_TARGET == 'kubernetes' || params.DEPLOY_TARGET == 'terraform' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : '<li><a href="http://localhost:3000">Application Docker Compose</a></li>'}
                     </ul>
                 """,
                 to: 'ousinfaye4@gmail.com',
