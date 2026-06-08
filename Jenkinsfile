@@ -74,7 +74,7 @@ pipeline {
                 echo 'Building Backend Docker image...'
                 script {
                     dir('express-js') {
-                        sh "docker build -t ${BACKEND_IMAGE}:${VERSION} ."
+                        sh "docker build --network=host -t ${BACKEND_IMAGE}:${VERSION} ."
                         sh "docker tag ${BACKEND_IMAGE}:${VERSION} ${BACKEND_IMAGE}:latest"
                     }
                 }
@@ -86,7 +86,7 @@ pipeline {
                 echo 'Building Frontend Docker image...'
                 script {
                     dir('react-js') {
-                        sh "docker build -t ${FRONTEND_IMAGE}:${VERSION} ."
+                        sh "docker build --network=host -t ${FRONTEND_IMAGE}:${VERSION} ."
                         sh "docker tag ${FRONTEND_IMAGE}:${VERSION} ${FRONTEND_IMAGE}:latest"
                     }
                 }
