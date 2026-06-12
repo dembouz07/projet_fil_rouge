@@ -195,12 +195,7 @@ pipeline {
                             '''
                             
                             // Vérifier AWS CLI (normalement déjà installé)
-                            sh '''
-                                if ! command -v aws &> /dev/null; then
-                                    echo "AWS CLI not found - installation required"
-                                    exit 1
-                                fi
-                            '''
+                            sh 'aws --version'
                             
                             // Vérifier AWS credentials
                             sh 'aws sts get-caller-identity'
