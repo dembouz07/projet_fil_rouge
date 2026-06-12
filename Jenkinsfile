@@ -223,18 +223,15 @@ aws_region     = "us-east-1"
 environment    = "dev"
 project_name   = "portfolio"
 
-# Déployer EKS avec l'application
-deploy_eks     = true
-deploy_ec2     = false
+# Déployer EC2 uniquement (AWS Academy ne permet pas EKS)
+deploy_eks     = false
+deploy_ec2     = true
 
-# Configuration EKS
-eks_cluster_version = "1.28"
-eks_node_desired_size = 2
-eks_node_min_size     = 1
-eks_node_max_size     = 3
-eks_node_instance_types = ["t3.medium"]
+# Configuration EC2
+ec2_instance_type = "t2.micro"
+ec2_instance_count = 1
 
-# Images de l'application
+# Images de l'application (pour référence future)
 backend_image  = "${BACKEND_IMAGE}:${VERSION}"
 frontend_image = "${FRONTEND_IMAGE}:${VERSION}"
 backend_replicas  = 2
