@@ -206,11 +206,28 @@ pipeline {
                             // Initialiser Terraform
                             sh 'terraform init'
                             
-                            // Détruire l'infrastructure existante si demandé
+                            // Détruire l'infrastructure existante si demandé OU si déploiement échoué
                             if (params.TERRAFORM_DESTROY) {
                                 echo 'Destroying existing infrastructure...'
                                 sh 'terraform destroy -auto-approve'
                                 sleep 10
+                            } else {
+                                // Import automatique des ressources orphelines si elles existent
+                                echo 'Checking for existing resources...'
+                                sh '''
+                                    # Importer l'instance EC2 si elle existe (ignorer l'erreur si elle n'existe pas)
+                                    aws ec2 describe-instances --filters "Name=tag:Name,Values=portfolio-dev-ec2" \
+                                        "Name=instance-state-name,Values=running,stopped" \
+                                        --query 'Reservations[0].Instances[0].InstanceId' --output text 2>/dev/null | grep '^i-' && \
+                                    terraform import 'module.ec2[0].aws_instance.main' $(aws ec2 describe-instances --filters "Name=tag:Name,Values=portfolio-dev-ec2" --query 'Reservations[0].Instances[0].InstanceId' --output text) || echo "No EC2 instance to import"
+                                    
+                                    # Supprimer les Elastic IPs orphelines qui bloquent
+                                    echo "Cleaning up orphaned Elastic IPs..."
+                                    for eip in $(aws ec2 describe-addresses --filters "Name=tag:Name,Values=portfolio-dev-nat-eip-*" --query 'Addresses[*].AllocationId' --output text); do
+                                        echo "Releasing Elastic IP: $eip"
+                                        aws ec2 release-address --allocation-id $eip || true
+                                    done
+                                ''' || echo "Resource cleanup completed"
                             }
                             
                             // Valider la configuration
