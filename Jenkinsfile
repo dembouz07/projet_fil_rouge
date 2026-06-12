@@ -4,8 +4,8 @@ pipeline {
     parameters {
         choice(
             name: 'DEPLOY_TARGET',
-            choices: ['docker-compose', 'kubernetes', 'terraform'],
-            description: 'Choisir la cible de déploiement'
+            choices: ['terraform', 'docker-compose', 'kubernetes'],
+            description: 'Choisir la cible de déploiement (terraform = AWS EKS)'
         )
         booleanParam(
             name: 'SKIP_TESTS',
@@ -106,6 +106,9 @@ pipeline {
             }
         }
         
+        // NOTE: Docker Compose et Kubernetes locaux commentés - Focus sur AWS EKS via Terraform
+        
+        /*
         stage('Deploy to Docker Compose') {
             when {
                 expression { params.DEPLOY_TARGET == 'docker-compose' }
@@ -165,13 +168,14 @@ pipeline {
                 }
             }
         }
+        */
         
-        stage('Deploy with Terraform AWS') {
+        stage('Deploy to AWS EKS with Terraform') {
             when {
                 expression { params.DEPLOY_TARGET == 'terraform' }
             }
             steps {
-                echo 'Deploying to AWS with Terraform...'
+                echo '🚀 Deploying to AWS EKS with Terraform...'
                 script {
                     dir('terraform') {
                         // Installer Terraform si non présent
