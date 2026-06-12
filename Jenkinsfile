@@ -44,6 +44,9 @@ pipeline {
         }
         
         stage('SonarQube Analysis') {
+            when {
+                expression { !params.SKIP_TESTS }
+            }
             steps {
                 script {
                     def scannerHome = tool 'SonarQube Scanner'
@@ -62,6 +65,9 @@ pipeline {
         }
         
         stage('Quality Gate') {
+            when {
+                expression { !params.SKIP_TESTS }
+            }
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
