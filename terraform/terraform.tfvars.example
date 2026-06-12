@@ -1,0 +1,46 @@
+# ===========================================
+# Exemple de fichier terraform.tfvars
+# Copier ce fichier vers terraform.tfvars et ajuster les valeurs
+# ===========================================
+
+# Configuration AWS
+aws_region   = "us-east-1"
+environment  = "dev"
+project_name = "portfolio"
+
+# ===========================================
+# SCÉNARIO 1: VPC seulement (minimal, pour démo réseau)
+# ===========================================
+# deploy_ec2 = false
+# deploy_eks = false
+# Coût: ~$32/mois (NAT Gateway)
+
+# ===========================================
+# SCÉNARIO 2: VPC + EC2 (test simple)
+# ===========================================
+# deploy_ec2     = true
+# ec2_key_name   = "my-key-name"  # Créer d'abord: aws ec2 create-key-pair
+# deploy_eks     = false
+# Coût: ~$40/mois (NAT + EC2 t3.micro)
+
+# ===========================================
+# SCÉNARIO 3: VPC + EKS + Application (production-like)
+# ===========================================
+deploy_eks     = true
+deploy_ec2     = false
+
+# Configuration EKS
+eks_cluster_version      = "1.28"
+eks_node_desired_size    = 2
+eks_node_min_size        = 1
+eks_node_max_size        = 3
+eks_node_instance_types  = ["t3.medium"]
+
+# Images de l'application (automatiquement mises à jour par Jenkins)
+backend_image     = "dembouz7/portfolio-backend:latest"
+frontend_image    = "dembouz7/portfolio-frontend:latest"
+backend_replicas  = 2
+frontend_replicas = 2
+
+# Coût: ~$165/mois (NAT + EKS + 2x t3.medium nodes)
+# ⚠️ IMPORTANT: Détruire après tests avec: terraform destroy
