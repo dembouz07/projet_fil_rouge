@@ -166,12 +166,12 @@ pipeline {
             }
         }
         
-        stage('Deploy with Terraform') {
+        stage('Deploy with Terraform AWS') {
             when {
                 expression { params.DEPLOY_TARGET == 'terraform' }
             }
             steps {
-                echo 'Deploying to Kubernetes with Terraform...'
+                echo 'Deploying to AWS with Terraform...'
                 script {
                     dir('terraform') {
                         // Installer Terraform si non présent
@@ -183,6 +183,9 @@ pipeline {
                                 rm terraform_1.6.6_linux_amd64.zip
                             fi
                         '''
+                        
+                        // Vérifier AWS credentials
+                        sh 'aws sts get-caller-identity || echo "WARNING: AWS credentials not configured"'
                         
                         // Vérifier la version de Terraform
                         sh 'terraform version'
@@ -200,16 +203,29 @@ pipeline {
                         // Valider la configuration
                         sh 'terraform validate'
                         
-                        // Créer un fichier tfvars avec les images à jour
+                        // Créer un fichier tfvars avec les configurations
                         sh """
                             cat > terraform.auto.tfvars <<EOF
-backend_image = "${BACKEND_IMAGE}:${VERSION}"
+aws_region     = "us-east-1"
+environment    = "dev"
+project_name   = "portfolio"
+
+# Déployer EKS avec l'application
+deploy_eks     = true
+deploy_ec2     = false
+
+# Configuration EKS
+eks_cluster_version = "1.28"
+eks_node_desired_size = 2
+eks_node_min_size     = 1
+eks_node_max_size     = 3
+eks_node_instance_types = ["t3.medium"]
+
+# Images de l'application
+backend_image  = "${BACKEND_IMAGE}:${VERSION}"
 frontend_image = "${FRONTEND_IMAGE}:${VERSION}"
-backend_replicas = 3
+backend_replicas  = 2
 frontend_replicas = 2
-namespace = "portfolio"
-ingress_host = "portfolio.local"
-mongodb_storage_size = "1Gi"
 EOF
                         """
                         
@@ -222,8 +238,15 @@ EOF
                         // Afficher les outputs
                         sh 'terraform output'
                         
-                        // Vérifier l'état dans Kubernetes
-                        sh 'kubectl get all -n portfolio'
+                        // Configurer kubectl pour EKS
+                        sh '''
+                            if [ -n "$(terraform output -raw eks_cluster_name 2>/dev/null)" ]; then
+                                aws eks update-kubeconfig --region us-east-1 --name $(terraform output -raw eks_cluster_name)
+                                kubectl get nodes
+                                kubectl get pods -n portfolio
+                                kubectl get svc -n portfolio
+                            fi
+                        '''
                     }
                 }
             }
@@ -258,7 +281,9 @@ EOF
                     <ul>
                         <li><a href="http://localhost:9000/dashboard?id=portfolio-cicd">Rapport SonarQube</a></li>
                         <li><a href="${env.BUILD_URL}">Détails du build Jenkins</a></li>
-                        ${params.DEPLOY_TARGET == 'kubernetes' || params.DEPLOY_TARGET == 'terraform' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : '<li><a href="http://localhost:3000">Application Docker Compose</a></li>'}
+                        ${params.DEPLOY_TARGET == 'kubernetes' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : ''}
+                        ${params.DEPLOY_TARGET == 'terraform' ? '<li>Application déployée sur AWS EKS - Voir logs pour LoadBalancer URL</li>' : ''}
+                        ${params.DEPLOY_TARGET == 'docker-compose' ? '<li><a href="http://localhost:3000">Application Docker Compose</a></li>' : ''}
                     </ul>
                 """,
                 to: 'ousinfaye4@gmail.com',
