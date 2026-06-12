@@ -1,51 +1,58 @@
 # ===========================================
-# TERRAFORM - Déploiement Kubernetes Portfolio
+# Infrastructure Terraform AWS
+# Portfolio CI/CD Project
 # ===========================================
 
-# Namespace
-module "namespace" {
-  source    = "./modules/namespace"
-  namespace = var.namespace
+# Module VPC - Réseau de base (toujours créé)
+module "vpc" {
+  source = "./modules/vpc"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  vpc_cidr           = var.vpc_cidr
+  availability_zones = var.availability_zones
 }
 
-# MongoDB
-module "mongodb" {
-  source       = "./modules/mongodb"
-  namespace    = module.namespace.name
-  storage_size = var.mongodb_storage_size
+# Module EC2 - Instance de test (optionnel)
+module "ec2" {
+  count  = var.deploy_ec2 ? 1 : 0
+  source = "./modules/ec2"
 
-  depends_on = [module.namespace]
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  subnet_id         = module.vpc.public_subnet_ids[0]
+  instance_type     = var.ec2_instance_type
+  key_name          = var.ec2_key_name
+  security_group_id = module.vpc.public_security_group_id
 }
 
-# Backend
-module "backend" {
-  source      = "./modules/backend"
-  namespace   = module.namespace.name
-  image       = var.backend_image
-  replicas    = var.backend_replicas
-  mongodb_uri = "mongodb://${module.mongodb.username}:${module.mongodb.password}@${module.mongodb.service_name}:27017/portfolio?authSource=admin"
+# Module EKS - Cluster Kubernetes (optionnel)
+module "eks" {
+  count  = var.deploy_eks ? 1 : 0
+  source = "./modules/eks"
 
-  depends_on = [module.mongodb]
+  project_name       = var.project_name
+  environment        = var.environment
+  cluster_version    = var.eks_cluster_version
+  vpc_id             = module.vpc.vpc_id
+  subnet_ids         = module.vpc.private_subnet_ids
+  node_instance_types = var.eks_node_instance_types
+  desired_size       = var.eks_node_desired_size
+  min_size           = var.eks_node_min_size
+  max_size           = var.eks_node_max_size
 }
 
-# Frontend
-module "frontend" {
-  source      = "./modules/frontend"
-  namespace   = module.namespace.name
-  image       = var.frontend_image
-  replicas    = var.frontend_replicas
-  backend_url = "http://${var.ingress_host}/api"
+# Module Application sur EKS (si EKS déployé)
+module "app_eks" {
+  count  = var.deploy_eks ? 1 : 0
+  source = "./modules/app"
 
-  depends_on = [module.namespace]
-}
+  depends_on = [module.eks]
 
-# Ingress
-module "ingress" {
-  source           = "./modules/ingress"
-  namespace        = module.namespace.name
-  host             = var.ingress_host
-  frontend_service = module.frontend.service_name
-  backend_service  = module.backend.service_name
-
-  depends_on = [module.frontend, module.backend]
+  namespace         = "portfolio"
+  backend_image     = var.backend_image
+  frontend_image    = var.frontend_image
+  backend_replicas  = var.backend_replicas
+  frontend_replicas = var.frontend_replicas
 }
