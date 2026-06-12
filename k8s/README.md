@@ -22,22 +22,27 @@ Ce guide de 82 KB contient :
 - **kubectl** installé et configuré
 - **Ingress Controller** (NGINX recommandé)
 
-## 🚀 Installation rapide
+## 🚀 Déploiement
 
-### Sur Windows (PowerShell)
-```powershell
-cd k8s
-.\deploy.ps1
-```
+### Via Jenkins CI/CD (Recommandé)
 
-### Sur Linux/Mac (Bash)
-```bash
-cd k8s
-chmod +x deploy.sh
-./deploy.sh
-```
+Le déploiement est **automatisé via Jenkins** :
 
-## 📦 Déploiement manuel
+1. **Accédez à Jenkins** : http://localhost:8080
+2. **Sélectionnez le job** : `portfolio-cicd`
+3. **Cliquez sur** "Build with Parameters"
+4. **Choisissez** `DEPLOY_TARGET = kubernetes`
+5. **Lancez** le build
+
+Jenkins va automatiquement :
+- ✅ Builder les images Docker
+- ✅ Les pousser sur Docker Hub
+- ✅ Déployer sur Kubernetes
+- ✅ Effectuer un rolling update sans coupure
+- ✅ Vérifier que tout fonctionne
+- ✅ Vous envoyer un email de confirmation
+
+### Déploiement manuel
 
 ### 1. Créer le namespace
 ```bash
@@ -152,17 +157,22 @@ kubectl delete -f mongodb-deployment.yaml
 
 ## 🔄 Mise à jour
 
-### Mettre à jour une image
+### Via Jenkins (Recommandé)
+
+Les mises à jour sont **automatiques** :
+1. **Commitez** votre code : `git push`
+2. **Jenkins détecte** le changement (SCM polling toutes les minutes)
+3. **Jenkins build** et déploie automatiquement
+4. **Rolling update** : zero downtime
+
+### Mise à jour manuelle (si nécessaire)
+
 ```bash
-# Backend
+# Mettre à jour une image
 kubectl set image deployment/backend backend=dembouz7/portfolio-backend:v1.0.27 -n portfolio
-
-# Frontend
 kubectl set image deployment/frontend frontend=dembouz7/portfolio-frontend:v1.0.27 -n portfolio
-```
 
-### Redémarrer un déploiement
-```bash
+# Redémarrer un déploiement
 kubectl rollout restart deployment/backend -n portfolio
 kubectl rollout restart deployment/frontend -n portfolio
 ```
