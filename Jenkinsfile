@@ -233,7 +233,9 @@ pipeline {
                                         echo "Releasing Elastic IP: $eip"
                                         aws ec2 release-address --allocation-id $eip || true
                                     done
-                                ''' || echo "Resource cleanup completed"
+                                    
+                                    echo "Resource cleanup completed"
+                                '''
                             }
                             
                             // Valider la configuration
