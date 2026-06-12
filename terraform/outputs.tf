@@ -61,6 +61,6 @@ output "eks_kubeconfig_command" {
 # ===========================================
 
 output "application_url" {
-  description = "URL de l'application (LoadBalancer)"
-  value       = var.deploy_eks ? "Utilisez: kubectl get svc -n portfolio" : null
+  description = "URL de l'application Portfolio"
+  value       = var.deploy_eks ? "Utilisez: kubectl get svc -n portfolio" : (var.deploy_ec2 ? module.ec2[0].application_url : "Aucune application déployée")
 }

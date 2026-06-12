@@ -12,3 +12,8 @@ output "public_dns" {
   description = "DNS public"
   value       = aws_instance.main.public_dns
 }
+
+output "application_url" {
+  description = "URL de l'application Portfolio"
+  value       = "http://${aws_instance.main.public_ip}"
+}
