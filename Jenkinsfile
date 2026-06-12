@@ -177,38 +177,53 @@ pipeline {
             steps {
                 echo '🚀 Deploying to AWS EKS with Terraform...'
                 script {
-                    dir('terraform') {
-                        // Installer Terraform si non présent
-                        sh '''
-                            if ! command -v terraform &> /dev/null; then
-                                wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
-                                unzip terraform_1.6.6_linux_amd64.zip
-                                mv terraform /usr/local/bin/ || sudo mv terraform /usr/local/bin/
-                                rm terraform_1.6.6_linux_amd64.zip
-                            fi
-                        '''
+                    // Charger les credentials AWS depuis Jenkins
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        dir('terraform') {
+                            // Installer Terraform si non présent
+                            sh '''
+                                if ! command -v terraform &> /dev/null; then
+                                    wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+                                    unzip terraform_1.6.6_linux_amd64.zip
+                                    mv terraform /usr/local/bin/ || sudo mv terraform /usr/local/bin/
+                                    rm terraform_1.6.6_linux_amd64.zip
+                                fi
+                            '''
+                            
+                            // Installer AWS CLI si non présent
+                            sh '''
+                                if ! command -v aws &> /dev/null; then
+                                    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                                    unzip awscliv2.zip
+                                    ./aws/install || sudo ./aws/install
+                                    rm -rf aws awscliv2.zip
+                                fi
+                            '''
+                            
+                            // Vérifier AWS credentials
+                            sh 'aws sts get-caller-identity'
+                            
+                            // Vérifier la version de Terraform
+                            sh 'terraform version'
                         
-                        // Vérifier AWS credentials
-                        sh 'aws sts get-caller-identity || echo "WARNING: AWS credentials not configured"'
-                        
-                        // Vérifier la version de Terraform
-                        sh 'terraform version'
-                        
-                        // Initialiser Terraform
-                        sh 'terraform init'
-                        
-                        // Détruire l'infrastructure existante si demandé
-                        if (params.TERRAFORM_DESTROY) {
-                            echo 'Destroying existing infrastructure...'
-                            sh 'terraform destroy -auto-approve'
-                            sleep 10
-                        }
-                        
-                        // Valider la configuration
-                        sh 'terraform validate'
-                        
-                        // Créer un fichier tfvars avec les configurations
-                        sh """
+                            // Initialiser Terraform
+                            sh 'terraform init'
+                            
+                            // Détruire l'infrastructure existante si demandé
+                            if (params.TERRAFORM_DESTROY) {
+                                echo 'Destroying existing infrastructure...'
+                                sh 'terraform destroy -auto-approve'
+                                sleep 10
+                            }
+                            
+                            // Valider la configuration
+                            sh 'terraform validate'
+                            
+                            // Créer un fichier tfvars avec les configurations
+                            sh """
                             cat > terraform.auto.tfvars <<EOF
 aws_region     = "us-east-1"
 environment    = "dev"
@@ -231,26 +246,27 @@ frontend_image = "${FRONTEND_IMAGE}:${VERSION}"
 backend_replicas  = 2
 frontend_replicas = 2
 EOF
-                        """
-                        
-                        // Afficher le plan
-                        sh 'terraform plan -out=tfplan'
-                        
-                        // Appliquer les changements
-                        sh 'terraform apply -auto-approve tfplan'
-                        
-                        // Afficher les outputs
-                        sh 'terraform output'
-                        
-                        // Configurer kubectl pour EKS
-                        sh '''
-                            if [ -n "$(terraform output -raw eks_cluster_name 2>/dev/null)" ]; then
-                                aws eks update-kubeconfig --region us-east-1 --name $(terraform output -raw eks_cluster_name)
-                                kubectl get nodes
-                                kubectl get pods -n portfolio
-                                kubectl get svc -n portfolio
-                            fi
-                        '''
+                            """
+                            
+                            // Afficher le plan
+                            sh 'terraform plan -out=tfplan'
+                            
+                            // Appliquer les changements
+                            sh 'terraform apply -auto-approve tfplan'
+                            
+                            // Afficher les outputs
+                            sh 'terraform output'
+                            
+                            // Configurer kubectl pour EKS
+                            sh '''
+                                if [ -n "$(terraform output -raw eks_cluster_name 2>/dev/null)" ]; then
+                                    aws eks update-kubeconfig --region us-east-1 --name $(terraform output -raw eks_cluster_name)
+                                    kubectl get nodes
+                                    kubectl get pods -n portfolio
+                                    kubectl get svc -n portfolio
+                                fi
+                            '''
+                        }
                     }
                 }
             }
