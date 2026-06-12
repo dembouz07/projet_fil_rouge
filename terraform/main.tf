@@ -7,10 +7,11 @@
 module "vpc" {
   source = "./modules/vpc"
 
-  project_name       = var.project_name
-  environment        = var.environment
-  vpc_cidr           = var.vpc_cidr
-  availability_zones = var.availability_zones
+  project_name        = var.project_name
+  environment         = var.environment
+  vpc_cidr            = var.vpc_cidr
+  availability_zones  = var.availability_zones
+  single_nat_gateway  = true  # Utiliser 1 seul NAT Gateway (économie pour AWS Academy)
 }
 
 # Module EC2 - Instance de test (optionnel)

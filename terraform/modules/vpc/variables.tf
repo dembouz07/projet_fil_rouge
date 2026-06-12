@@ -17,3 +17,9 @@ variable "availability_zones" {
   description = "Liste des zones de disponibilité"
   type        = list(string)
 }
+
+variable "single_nat_gateway" {
+  description = "Utiliser un seul NAT Gateway au lieu de un par AZ (économie de coûts)"
+  type        = bool
+  default     = false
+}
