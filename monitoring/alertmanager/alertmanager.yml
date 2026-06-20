@@ -1,0 +1,183 @@
+# ============================================
+# ALERTMANAGER CONFIGURATION
+# Alert Routing and Notifications
+# ============================================
+
+global:
+  # SMTP Configuration pour notifications email
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@portfolio.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+  smtp_require_tls: true
+  
+  # Resolver timeout
+  resolve_timeout: 5m
+
+# ==========================================
+# TEMPLATES (optionnel)
+# ==========================================
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ==========================================
+# ROUTES - Routing des alertes
+# ==========================================
+route:
+  # Receiver par défaut
+  receiver: 'default-receiver'
+  
+  # Grouper les alertes par
+  group_by: ['alertname', 'component', 'severity']
+  
+  # Délais
+  group_wait: 30s        # Attendre 30s avant d'envoyer la première alerte du groupe
+  group_interval: 5m     # Attendre 5min entre chaque groupe d'alertes
+  repeat_interval: 4h    # Répéter l'alerte toutes les 4h si elle persiste
+  
+  # Routes spécifiques
+  routes:
+    # Alertes critiques - email immédiat
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 10s
+      repeat_interval: 1h
+    
+    # Alertes warning - groupées
+    - match:
+        severity: warning
+      receiver: 'warning-receiver'
+      group_wait: 1m
+      repeat_interval: 6h
+    
+    # Alertes backend
+    - match:
+        component: backend
+      receiver: 'backend-team'
+    
+    # Alertes database
+    - match:
+        component: database
+      receiver: 'database-team'
+
+# ==========================================
+# INHIBITION RULES
+# Empêcher certaines alertes si d'autres sont actives
+# ==========================================
+inhibit_rules:
+  # Si le backend est DOWN, ne pas alerter sur latence/erreurs
+  - source_match:
+      alertname: 'BackendDown'
+    target_match_re:
+      alertname: '(HighLatencyP95|HighServerErrorRate|HighRequestRate)'
+    equal: ['component']
+  
+  # Si alerte critique, supprimer les warnings du même composant
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'component']
+
+# ==========================================
+# RECEIVERS - Destinations des alertes
+# ==========================================
+receivers:
+  # ------------------------------------------
+  # Default Receiver
+  # ------------------------------------------
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'ousinfaye4@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '[Portfolio Alert] {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>🚨 Alerte Portfolio</h2>
+          <p><strong>Alertname:</strong> {{ .GroupLabels.alertname }}</p>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+          <p><strong>Description:</strong> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+  
+  # ------------------------------------------
+  # Critical Alerts - Notification immédiate
+  # ------------------------------------------
+  - name: 'critical-receiver'
+    email_configs:
+      - to: 'ousinfaye4@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '🚨 [CRITICAL] {{ .GroupLabels.alertname }}'
+          Priority: 'urgent'
+        html: |
+          <div style="background-color: #ff4444; color: white; padding: 20px; border-radius: 5px;">
+            <h1>🚨 ALERTE CRITIQUE</h1>
+            <h2>{{ .GroupLabels.alertname }}</h2>
+            <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+            <p><strong>Description:</strong> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+            <p><strong>Time:</strong> {{ range .Alerts }}{{ .StartsAt }}{{ end }}</p>
+            <hr>
+            <p>Action immédiate requise!</p>
+          </div>
+  
+  # ------------------------------------------
+  # Warning Alerts
+  # ------------------------------------------
+  - name: 'warning-receiver'
+    email_configs:
+      - to: 'ousinfaye4@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '⚠️ [WARNING] {{ .GroupLabels.alertname }}'
+        html: |
+          <div style="background-color: #ff9800; color: white; padding: 15px; border-radius: 5px;">
+            <h2>⚠️ Alerte Warning</h2>
+            <p><strong>Alertname:</strong> {{ .GroupLabels.alertname }}</p>
+            <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+            <p><strong>Description:</strong> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+          </div>
+  
+  # ------------------------------------------
+  # Backend Team
+  # ------------------------------------------
+  - name: 'backend-team'
+    email_configs:
+      - to: 'ousinfaye4@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '[Backend Alert] {{ .GroupLabels.alertname }}'
+  
+  # ------------------------------------------
+  # Database Team
+  # ------------------------------------------
+  - name: 'database-team'
+    email_configs:
+      - to: 'ousinfaye4@gmail.com'
+        send_resolved: true
+        headers:
+          Subject: '[Database Alert] {{ .GroupLabels.alertname }}'
+
+# ==========================================
+# NOTES D'UTILISATION
+# ==========================================
+# Configuration SMTP Gmail:
+# 1. Activer l'authentification à 2 facteurs sur votre compte Gmail
+# 2. Générer un "App Password" dans Paramètres de sécurité
+# 3. Remplacer 'your-email@gmail.com' et 'your-app-password'
+#
+# Pour tester la configuration:
+# docker exec -it portfolio-alertmanager amtool config show
+#
+# Pour tester l'envoi d'alerte:
+# docker exec -it portfolio-alertmanager amtool alert add test severity=warning
+#
+# Variables disponibles dans les templates:
+# - .GroupLabels: Labels du groupe d'alertes
+# - .CommonLabels: Labels communs à toutes les alertes
+# - .CommonAnnotations: Annotations communes
+# - .Alerts: Liste de toutes les alertes
+# - .Alert.Labels: Labels d'une alerte
+# - .Alert.Annotations: Annotations d'une alerte
+# - .Alert.StartsAt: Heure de début
+# - .Alert.EndsAt: Heure de fin (si résolue)
