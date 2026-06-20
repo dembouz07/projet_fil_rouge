@@ -20,7 +20,9 @@ connectDB();
 const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://172.16.146.1:3000'
+    'http://172.16.146.1:3000',
+    'http://portfolio.local',
+    'https://portfolio.local'
 ];
 
 app.use(cors({
