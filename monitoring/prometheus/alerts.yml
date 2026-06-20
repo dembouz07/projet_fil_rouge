@@ -19,7 +19,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Utilisation CPU élevée"
-          description: "Le CPU est utilisé à {{ $value | humanizePercentage }} (seuil: 80%)"
+          description: "Le CPU est utilisé à {{ $value }}% (seuil: 80%)"
 
       # CPU critique
       - alert: CriticalCpuUsage
@@ -30,7 +30,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Utilisation CPU critique"
-          description: "Le CPU est utilisé à {{ $value | humanizePercentage }} (seuil: 90%)"
+          description: "Le CPU est utilisé à {{ $value }}% (seuil: 90%)"
 
       # Mémoire élevée (Warning)
       - alert: HighMemoryUsage
@@ -41,7 +41,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Utilisation mémoire élevée"
-          description: "La RAM est utilisée à {{ $value | humanizePercentage }} (seuil: 85%)"
+          description: "La RAM est utilisée à {{ $value }}% (seuil: 85%)"
 
       # Mémoire critique
       - alert: CriticalMemoryUsage
@@ -52,7 +52,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Utilisation mémoire critique"
-          description: "La RAM est utilisée à {{ $value | humanizePercentage }} (seuil: 95%)"
+          description: "La RAM est utilisée à {{ $value }}% (seuil: 95%)"
 
       # Disque plein (Warning)
       - alert: DiskSpaceWarning
@@ -63,7 +63,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Espace disque faible sur {{ $labels.mountpoint }}"
-          description: "Le disque est utilisé à {{ $value | humanizePercentage }} (seuil: 80%)"
+          description: "Le disque est utilisé à {{ $value }}% (seuil: 80%)"
 
       # Disque plein (Critical)
       - alert: DiskSpaceCritical
@@ -74,7 +74,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Espace disque critique sur {{ $labels.mountpoint }}"
-          description: "Le disque est utilisé à {{ $value | humanizePercentage }} (seuil: 90%)"
+          description: "Le disque est utilisé à {{ $value }}% (seuil: 90%)"
 
       # Load Average élevé
       - alert: HighLoadAverage
@@ -96,7 +96,7 @@ groups:
           component: infrastructure
         annotations:
           summary: "Trafic réseau entrant élevé sur {{ $labels.device }}"
-          description: "{{ $value | humanize }}B/s reçus (seuil: 100MB/s)"
+          description: "{{ $value }} B/s reçus (seuil: 100MB/s)"
 
   # ==========================================
   # SERVICES ALERTS - Jenkins, SonarQube, Portfolio
@@ -185,7 +185,7 @@ groups:
           component: ssl
         annotations:
           summary: "Certificat SSL expire bientôt"
-          description: "Le certificat SSL de {{ $labels.instance }} expire dans {{ $value | humanizeDuration }}"
+          description: "Le certificat SSL de {{ $labels.instance }} expire bientôt"
 
   # ==========================================
   # PROMETHEUS ALERTS - Monitoring Health
@@ -257,7 +257,7 @@ groups:
           component: monitoring
         annotations:
           summary: "Trop de séries temporelles dans Prometheus"
-          description: "La base Prometheus contient trop de données ({{ $value | humanizeBytes }})"
+          description: "La base Prometheus contient trop de données ({{ $value }} bytes)"
 
 # ============================================
 # NOTES

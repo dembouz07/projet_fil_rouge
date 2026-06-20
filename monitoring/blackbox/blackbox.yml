@@ -37,6 +37,24 @@ modules:
         insecure_skip_verify: true
 
   # ------------------------------------------
+  # HTTP Probe Jenkins (accepte 403 = service UP mais auth requise)
+  # ------------------------------------------
+  http_jenkins:
+    prober: http
+    timeout: 8s
+    http:
+      method: GET
+      # Jenkins renvoie 403 sur la racine quand l'auth est requise:
+      # un 403 prouve que le service repond.
+      valid_status_codes: [200, 201, 202, 204, 301, 302, 401, 403]
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+      tls_config:
+        insecure_skip_verify: true
+
+  # ------------------------------------------
   # HTTP POST Probe
   # ------------------------------------------
   http_post_2xx:

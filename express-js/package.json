@@ -24,7 +24,8 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
-    "mongoose": "^6.12.0"
+    "mongoose": "^6.12.0",
+    "prom-client": "^15.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

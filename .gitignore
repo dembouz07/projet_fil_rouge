@@ -43,3 +43,11 @@ yarn-error.log*
 coverage/
 */coverage/
 *.lcov
+
+# Monitoring Documentation (exclude from commits)
+monitoring/*.md
+monitoring/**/*.md
+!monitoring/README.md
+
+# Monitoring Scripts (optionally exclude)
+# monitoring/*.ps1

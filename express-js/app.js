@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import connectDB from './src/config/database.js';
 import projectRoutes from './src/routes/projectRoutes.js';
 import { errorHandler } from './src/middleware/errorHandler.js';
+import { register, metricsMiddleware } from './src/middleware/metrics.js';
 
 dotenv.config();
 
@@ -47,14 +48,29 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware Prometheus pour tracker les métriques
+app.use(metricsMiddleware);
+
 app.get('/', (req, res) => {
     res.json({
         message: 'Bienvenue sur l\'API Portfolio',
         version: '1.0.0',
         endpoints: {
-            projects: '/api/projects'
+            projects: '/api/projects',
+            metrics: '/metrics'
         }
     });
+});
+
+// Endpoint Prometheus pour exposer les métriques
+app.get('/metrics', async (req, res) => {
+    try {
+        res.set('Content-Type', register.contentType);
+        const metrics = await register.metrics();
+        res.end(metrics);
+    } catch (error) {
+        res.status(500).end(error);
+    }
 });
 
 app.use('/api/projects', projectRoutes);
