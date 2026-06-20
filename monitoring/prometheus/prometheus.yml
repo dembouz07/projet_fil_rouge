@@ -1,0 +1,236 @@
+# ============================================
+# PROMETHEUS CONFIGURATION
+# DevOps Infrastructure Monitoring
+# Surveillance: Jenkins, SonarQube, Portfolio, Infrastructure
+# ============================================
+
+global:
+  # Intervalle de scraping par défaut
+  scrape_interval: 15s
+  
+  # Timeout pour chaque scrape
+  scrape_timeout: 10s
+  
+  # Intervalle d'évaluation des règles d'alerte
+  evaluation_interval: 15s
+  
+  # Labels externes ajoutés à toutes les métriques
+  external_labels:
+    monitor: 'devops-infrastructure-monitor'
+    environment: 'development'
+
+# ==========================================
+# ALERTING CONFIGURATION
+# ==========================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# ==========================================
+# ALERT RULES
+# ==========================================
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# ==========================================
+# SCRAPE CONFIGURATIONS
+# ==========================================
+scrape_configs:
+  
+  # ------------------------------------------
+  # Prometheus Self-Monitoring
+  # ------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          tier: 'monitoring'
+
+  # ------------------------------------------
+  # Portfolio Backend (Express.js)
+  # ------------------------------------------
+  - job_name: 'portfolio-backend'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['portfolio-backend:5000']
+        labels:
+          service: 'backend'
+          tier: 'application'
+          language: 'nodejs'
+    
+    metrics_path: '/metrics'
+    
+    # Scrape uniquement si le service répond
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'portfolio-backend'
+
+  # ------------------------------------------
+  # MongoDB Exporter
+  # ------------------------------------------
+  - job_name: 'mongodb'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          service: 'mongodb'
+          tier: 'database'
+    
+    # Métriques MongoDB
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'mongodb_.*'
+        action: keep
+
+  # ------------------------------------------
+  # Node Exporter (System Metrics)
+  # ------------------------------------------
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'
+          tier: 'infrastructure'
+    
+    # Filtrer uniquement les métriques essentielles
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_(cpu|memory|disk|network|filesystem).*'
+        action: keep
+
+  # ------------------------------------------
+  # cAdvisor (Container Metrics)
+  # ------------------------------------------
+  - job_name: 'cadvisor'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'containers'
+          tier: 'infrastructure'
+    
+    # Métriques conteneurs Docker
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'container_(cpu|memory|network|fs).*'
+        action: keep
+
+  # ------------------------------------------
+  # Alertmanager
+  # ------------------------------------------
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          service: 'alertmanager'
+          tier: 'monitoring'
+
+  # ------------------------------------------
+  # Grafana
+  # ------------------------------------------
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: 'grafana'
+          tier: 'monitoring'
+
+  # ==========================================
+  # BLACKBOX EXPORTER - HTTP PROBES
+  # ==========================================
+  
+  # ------------------------------------------
+  # Blackbox Exporter Self-Monitoring
+  # ------------------------------------------
+  - job_name: 'blackbox-exporter'
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+        labels:
+          service: 'blackbox'
+          tier: 'monitoring'
+
+  # ------------------------------------------
+  # Jenkins HTTP Probe
+  # ------------------------------------------
+  - job_name: 'jenkins-http'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://host.docker.internal:8080
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - target_label: service
+        replacement: jenkins
+      - target_label: tier
+        replacement: ci-cd
+
+  # ------------------------------------------
+  # SonarQube HTTP Probe
+  # ------------------------------------------
+  - job_name: 'sonarqube-http'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://host.docker.internal:9000
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - target_label: service
+        replacement: sonarqube
+      - target_label: tier
+        replacement: quality
+
+  # ------------------------------------------
+  # Portfolio HTTP Probe (Frontend)
+  # ------------------------------------------
+  - job_name: 'portfolio-http'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://portfolio-frontend:80
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - target_label: service
+        replacement: portfolio
+      - target_label: tier
+        replacement: application
+
+# ==========================================
+# REMOTE WRITE (optionnel - pour scaling)
+# ==========================================
+# remote_write:
+#   - url: "http://remote-prometheus:9090/api/v1/write"
+
+# ==========================================
+# REMOTE READ (optionnel - pour federation)
+# ==========================================
+# remote_read:
+#   - url: "http://remote-prometheus:9090/api/v1/read"

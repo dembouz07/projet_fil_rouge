@@ -1,0 +1,271 @@
+# ============================================
+# PROMETHEUS ALERT RULES
+# DevOps Infrastructure Monitoring Alerts
+# ============================================
+
+groups:
+  # ==========================================
+  # NODE ALERTS - Infrastructure Monitoring
+  # ==========================================
+  - name: node_alerts
+    interval: 30s
+    rules:
+      # CPU élevé (Warning)
+      - alert: HighCpuUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Utilisation CPU élevée"
+          description: "Le CPU est utilisé à {{ $value | humanizePercentage }} (seuil: 80%)"
+
+      # CPU critique
+      - alert: CriticalCpuUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Utilisation CPU critique"
+          description: "Le CPU est utilisé à {{ $value | humanizePercentage }} (seuil: 90%)"
+
+      # Mémoire élevée (Warning)
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Utilisation mémoire élevée"
+          description: "La RAM est utilisée à {{ $value | humanizePercentage }} (seuil: 85%)"
+
+      # Mémoire critique
+      - alert: CriticalMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Utilisation mémoire critique"
+          description: "La RAM est utilisée à {{ $value | humanizePercentage }} (seuil: 95%)"
+
+      # Disque plein (Warning)
+      - alert: DiskSpaceWarning
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Espace disque faible sur {{ $labels.mountpoint }}"
+          description: "Le disque est utilisé à {{ $value | humanizePercentage }} (seuil: 80%)"
+
+      # Disque plein (Critical)
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Espace disque critique sur {{ $labels.mountpoint }}"
+          description: "Le disque est utilisé à {{ $value | humanizePercentage }} (seuil: 90%)"
+
+      # Load Average élevé
+      - alert: HighLoadAverage
+        expr: node_load1 / count(node_cpu_seconds_total{mode="idle"}) without (cpu, mode) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Load average élevé"
+          description: "Load average à {{ $value }} (2x le nombre de CPUs)"
+
+      # Trafic réseau élevé
+      - alert: HighNetworkTraffic
+        expr: rate(node_network_receive_bytes_total[5m]) > 100000000
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Trafic réseau entrant élevé sur {{ $labels.device }}"
+          description: "{{ $value | humanize }}B/s reçus (seuil: 100MB/s)"
+
+  # ==========================================
+  # SERVICES ALERTS - Jenkins, SonarQube, Portfolio
+  # ==========================================
+  - name: services_alerts
+    interval: 30s
+    rules:
+      # Jenkins DOWN
+      - alert: JenkinsDown
+        expr: probe_success{job="jenkins-http"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: jenkins
+          service: ci-cd
+        annotations:
+          summary: "Jenkins est indisponible"
+          description: "Jenkins ne répond pas depuis plus de 2 minutes sur {{ $labels.instance }}"
+
+      # Jenkins lent
+      - alert: JenkinsSlow
+        expr: probe_duration_seconds{job="jenkins-http"} > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: jenkins
+          service: ci-cd
+        annotations:
+          summary: "Jenkins est lent"
+          description: "Jenkins répond en {{ $value }}s (seuil: 5s)"
+
+      # SonarQube DOWN
+      - alert: SonarQubeDown
+        expr: probe_success{job="sonarqube-http"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: sonarqube
+          service: quality
+        annotations:
+          summary: "SonarQube est indisponible"
+          description: "SonarQube ne répond pas depuis plus de 2 minutes sur {{ $labels.instance }}"
+
+      # SonarQube lent
+      - alert: SonarQubeSlow
+        expr: probe_duration_seconds{job="sonarqube-http"} > 3
+        for: 3m
+        labels:
+          severity: warning
+          component: sonarqube
+          service: quality
+        annotations:
+          summary: "SonarQube est lent"
+          description: "SonarQube répond en {{ $value }}s (seuil: 3s)"
+
+      # Portfolio DOWN
+      - alert: PortfolioDown
+        expr: probe_success{job="portfolio-http"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: portfolio
+          service: application
+        annotations:
+          summary: "Portfolio est indisponible"
+          description: "Le site Portfolio ne répond pas depuis plus de 2 minutes sur {{ $labels.instance }}"
+
+      # Portfolio lent
+      - alert: PortfolioSlow
+        expr: probe_duration_seconds{job="portfolio-http"} > 3
+        for: 3m
+        labels:
+          severity: warning
+          component: portfolio
+          service: application
+        annotations:
+          summary: "Portfolio est lent"
+          description: "Le Portfolio répond en {{ $value }}s (seuil: 3s)"
+
+      # SSL Certificate expiring soon (si HTTPS)
+      - alert: SSLCertificateExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry{job=~".*-http"} - time() < 86400 * 30
+        for: 1h
+        labels:
+          severity: warning
+          component: ssl
+        annotations:
+          summary: "Certificat SSL expire bientôt"
+          description: "Le certificat SSL de {{ $labels.instance }} expire dans {{ $value | humanizeDuration }}"
+
+  # ==========================================
+  # PROMETHEUS ALERTS - Monitoring Health
+  # ==========================================
+  - name: prometheus_alerts
+    interval: 30s
+    rules:
+      # Prometheus DOWN
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Prometheus est DOWN"
+          description: "Le serveur Prometheus ne répond pas"
+
+      # Target DOWN
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Target {{ $labels.job }} est DOWN"
+          description: "La target {{ $labels.job }} ({{ $labels.instance }}) ne répond pas depuis 2 minutes"
+
+      # Scrape duration élevée
+      - alert: HighScrapeDuration
+        expr: scrape_duration_seconds > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Scrape lent pour {{ $labels.job }}"
+          description: "Le scrape prend {{ $value }}s (seuil: 5s)"
+
+      # Trop de samples rejetés
+      - alert: HighSampleRejectionRate
+        expr: rate(prometheus_target_scrapes_sample_out_of_order_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Taux de rejet de samples élevé"
+          description: "{{ $value }} samples rejetés par seconde"
+
+      # Alertmanager DOWN
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Alertmanager est DOWN"
+          description: "Alertmanager ne répond pas - les notifications ne seront pas envoyées"
+
+      # Trop de series temporelles
+      - alert: TooManyTimeSeries
+        expr: prometheus_tsdb_symbol_table_size_bytes > 1000000000
+        for: 10m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Trop de séries temporelles dans Prometheus"
+          description: "La base Prometheus contient trop de données ({{ $value | humanizeBytes }})"
+
+# ============================================
+# NOTES
+# ============================================
+# Severities:
+# - info: Informational
+# - warning: Nécessite attention
+# - critical: Action immédiate requise
+#
+# for: Durée pendant laquelle la condition doit être vraie
+# interval: Fréquence d'évaluation des règles

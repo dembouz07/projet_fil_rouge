@@ -1,0 +1,82 @@
+# ============================================
+# BLACKBOX EXPORTER CONFIGURATION
+# HTTP/HTTPS/TCP/ICMP Probes Configuration
+# ============================================
+
+modules:
+  # ------------------------------------------
+  # HTTP GET Probe (HTTP 2xx)
+  # ------------------------------------------
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      # Méthode HTTP
+      method: GET
+      
+      # Codes de succès acceptés
+      valid_status_codes: [200, 201, 202, 204, 301, 302]
+      
+      # Suivre les redirections
+      follow_redirects: true
+      
+      # Préférer IPv4
+      preferred_ip_protocol: "ip4"
+      
+      # Headers HTTP
+      headers:
+        User-Agent: "Prometheus-Blackbox-Exporter"
+        Accept: "*/*"
+      
+      # Fail si le certificat SSL est invalide (pour HTTPS)
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+      
+      # Timeout TLS
+      tls_config:
+        insecure_skip_verify: true
+
+  # ------------------------------------------
+  # HTTP POST Probe
+  # ------------------------------------------
+  http_post_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: POST
+      valid_status_codes: [200, 201, 202]
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+
+  # ------------------------------------------
+  # HTTPS Probe avec vérification SSL
+  # ------------------------------------------
+  https_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      valid_status_codes: [200, 201, 202, 204, 301, 302]
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+      tls_config:
+        insecure_skip_verify: false
+      fail_if_not_ssl: true
+
+  # ------------------------------------------
+  # TCP Connect Probe
+  # ------------------------------------------
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: "ip4"
+
+  # ------------------------------------------
+  # ICMP Ping Probe
+  # ------------------------------------------
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: "ip4"
