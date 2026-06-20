@@ -3,8 +3,8 @@
  * Toutes les requêtes HTTP vers l'API Express.js + MongoDB
  */
 
-// URL de l'API - utilise l'URL Docker en production
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/projects';
+// URL de l'API - relative pour passer par l'Ingress (K8s) ou le proxy nginx (docker-compose)
+const BASE_URL = process.env.REACT_APP_API_URL || '/api/projects';
 
 /**
  * Normalise l'ID MongoDB (_id) en id pour compatibilité avec React
