@@ -1,0 +1,241 @@
+# ============================================
+# MONITORING STACK - PROMETHEUS & GRAFANA
+# DevOps Infrastructure Monitoring Solution
+# Surveillance: Jenkins, SonarQube, Portfolio, Infrastructure
+# ============================================
+
+services:
+  # ==========================================
+  # PROMETHEUS - Metrics Collection & Storage
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: portfolio-prometheus
+    restart: unless-stopped
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    
+    ports:
+      - '9090:9090'
+    
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    
+    networks:
+      - monitoring
+      - portfolio-network
+    
+    labels:
+      monitoring.service: "prometheus"
+      monitoring.description: "Metrics collection and storage"
+
+  # ==========================================
+  # GRAFANA - Visualization & Dashboards
+  # ==========================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: portfolio-grafana
+    restart: unless-stopped
+    
+    ports:
+      - '3005:3000'
+    
+    environment:
+      # Admin credentials
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      
+      # Security settings
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3005
+      
+      # Masquer le message de démo
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_AUTH_DISABLE_SIGNOUT_MENU=false
+      
+      # Plugins
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-clock-panel
+    
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    
+    networks:
+      - monitoring
+    
+    depends_on:
+      - prometheus
+    
+    labels:
+      monitoring.service: "grafana"
+      monitoring.description: "Metrics visualization and dashboards"
+
+  # ==========================================
+  # ALERTMANAGER - Alert Management
+  # ==========================================
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: portfolio-alertmanager
+    restart: unless-stopped
+    
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    
+    ports:
+      - '9093:9093'
+    
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    
+    networks:
+      - monitoring
+    
+    labels:
+      monitoring.service: "alertmanager"
+      monitoring.description: "Alert routing and notifications"
+
+  # ==========================================
+  # NODE EXPORTER - System Metrics
+  # ==========================================
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: portfolio-node-exporter
+    restart: unless-stopped
+    
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    
+    ports:
+      - '9100:9100'
+    
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    
+    networks:
+      - monitoring
+    
+    labels:
+      monitoring.service: "node-exporter"
+      monitoring.description: "System metrics (CPU, RAM, Disk)"
+
+  # ==========================================
+  # MONGODB EXPORTER - MongoDB Metrics
+  # ==========================================
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: portfolio-mongodb-exporter
+    restart: unless-stopped
+    
+    command:
+      - '--mongodb.uri=mongodb://portfolio-mongodb:27017/?authSource=admin'
+      - '--collect-all'
+      - '--compatible-mode'
+    
+    ports:
+      - '9216:9216'
+    
+    networks:
+      - monitoring
+      - portfolio-network
+    
+    labels:
+      monitoring.service: "mongodb-exporter"
+      monitoring.description: "MongoDB performance metrics"
+
+  # ==========================================
+  # CADVISOR - Container Metrics
+  # ==========================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: portfolio-cadvisor
+    restart: unless-stopped
+    privileged: true
+    
+    ports:
+      - '8081:8080'
+    
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    
+    devices:
+      - /dev/kmsg
+    
+    networks:
+      - monitoring
+    
+    labels:
+      monitoring.service: "cadvisor"
+      monitoring.description: "Docker container metrics"
+
+  # ==========================================
+  # BLACKBOX EXPORTER - HTTP Probes
+  # ==========================================
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: portfolio-blackbox-exporter
+    restart: unless-stopped
+    
+    command:
+      - '--config.file=/etc/blackbox/blackbox.yml'
+    
+    ports:
+      - '9115:9115'
+    
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    
+    networks:
+      - monitoring
+    
+    labels:
+      monitoring.service: "blackbox-exporter"
+      monitoring.description: "HTTP/TCP probes for service availability"
+
+# ==========================================
+# PERSISTENT VOLUMES
+# ==========================================
+volumes:
+  prometheus_data:
+    name: portfolio-prometheus-data
+    driver: local
+  
+  grafana_data:
+    name: portfolio-grafana-data
+    driver: local
+  
+  alertmanager_data:
+    name: portfolio-alertmanager-data
+    driver: local
+
+# ==========================================
+# NETWORKS
+# ==========================================
+networks:
+  # Internal monitoring network
+  monitoring:
+    name: portfolio-monitoring
+    driver: bridge
+  
+  # External network to connect with Portfolio services
+  portfolio-network:
+    external: true
+    name: projet_fil_rouge_portfolio-network
