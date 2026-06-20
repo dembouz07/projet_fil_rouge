@@ -1,0 +1,57 @@
+# ============================================
+# GRAFANA DASHBOARD PROVISIONING
+# Auto-load dashboards from file system
+# ============================================
+
+apiVersion: 1
+
+# Liste des providers de dashboards
+providers:
+  # ------------------------------------------
+  # Portfolio Dashboards Provider
+  # ------------------------------------------
+  - name: 'Portfolio Dashboards'
+    orgId: 1
+    
+    # Dossier dans l'UI Grafana
+    folder: 'Portfolio Monitoring'
+    
+    # Type de provider
+    type: file
+    
+    # Options
+    options:
+      # Chemin vers les fichiers JSON
+      path: /var/lib/grafana/dashboards
+      
+      # Rechercher récursivement dans les sous-dossiers
+      foldersFromFilesStructure: false
+    
+    # Permissions
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    
+    # Mode éditable
+    editable: true
+
+# ============================================
+# STRUCTURE DES FICHIERS
+# ============================================
+# Les dashboards JSON doivent être placés dans:
+# monitoring/grafana/dashboards/
+#
+# Exemple:
+# - portfolio-dashboard.json
+# - mongodb-dashboard.json
+# - system-dashboard.json
+#
+# Ils seront automatiquement chargés au démarrage
+# et rafraîchis toutes les 30 secondes
+
+# ============================================
+# NOTES
+# ============================================
+# - disableDeletion: false = dashboards modifiables/supprimables dans l'UI
+# - allowUiUpdates: true = modifications dans l'UI sauvegardées
+# - foldersFromFilesStructure: false = tous les dashboards dans un seul dossier

@@ -1,0 +1,73 @@
+# ============================================
+# GRAFANA DATASOURCE PROVISIONING
+# Auto-configure Prometheus datasource
+# ============================================
+
+apiVersion: 1
+
+# Liste des datasources à provisionner
+datasources:
+  # ------------------------------------------
+  # Prometheus Datasource
+  # ------------------------------------------
+  - name: prometheus
+    type: prometheus
+    access: proxy
+    
+    # URL interne (depuis le conteneur Grafana)
+    url: http://prometheus:9090
+    
+    # Datasource par défaut
+    isDefault: true
+    
+    # Paramètres JSON
+    jsonData:
+      # Timeout des requêtes (secondes)
+      httpMethod: POST
+      timeInterval: 15s
+      
+      # Query editor features
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.48.0
+      
+      # Caching
+      cacheLevel: 'High'
+      
+      # Exemplars (pour tracing - optionnel)
+      exemplarTraceIdDestinations: []
+    
+    # Mode éditable dans l'UI
+    editable: true
+    
+    # Version du schéma
+    version: 1
+    
+    # UID unique (important pour les dashboards)
+    uid: prometheus
+    
+    # Organisation
+    orgId: 1
+
+  # ------------------------------------------
+  # Datasource Alertmanager (optionnel)
+  # ------------------------------------------
+  - name: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    jsonData:
+      implementation: prometheus
+    editable: false
+    version: 1
+    uid: alertmanager
+    orgId: 1
+
+# ============================================
+# NOTES
+# ============================================
+# - Cette configuration est appliquée au démarrage de Grafana
+# - Le nom 'prometheus' (et UID) est utilisé par les dashboards
+# - access: proxy = requêtes passent par le serveur Grafana
+# - access: direct = requêtes depuis le navigateur (CORS requis)
+# - isDefault: true = datasource par défaut pour nouveaux panels
