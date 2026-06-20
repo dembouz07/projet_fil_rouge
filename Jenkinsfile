@@ -112,24 +112,7 @@ pipeline {
             }
         }
         
-        // NOTE: Docker Compose et Kubernetes locaux commentés - Focus sur AWS EKS via Terraform
-        
-        /*
-        stage('Deploy to Docker Compose') {
-            when {
-                expression { params.DEPLOY_TARGET == 'docker-compose' }
-            }
-            steps {
-                echo 'Deploying to Docker Compose...'
-                script {
-                    sh 'docker stop portfolio-mongodb portfolio-backend portfolio-frontend || true'
-                    sh 'docker rm -f portfolio-mongodb portfolio-backend portfolio-frontend || true'
-                    sh 'docker-compose -f docker-compose.hub.yml down -v || true'
-                    sh 'docker-compose -f docker-compose.hub.yml pull'
-                    sh 'docker-compose -f docker-compose.hub.yml up -d'
-                }
-            }
-        }
+        // NOTE: Docker Compose commenté - Kubernetes local + AWS EKS via Terraform actifs
         
         stage('Deploy to Kubernetes') {
             when {
@@ -147,19 +130,19 @@ pipeline {
                         fi
                     '''
                     
-                    // Mettre à jour les images dans les deployments
-                    sh """
-                        kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
-                        kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
-                    """
-                    
-                    // Si les deployments n'existent pas, les créer
+                    // Créer/mettre à jour les ressources
                     sh """
                         kubectl apply -f k8s/namespace.yaml
                         kubectl apply -f k8s/mongodb-deployment.yaml
                         kubectl apply -f k8s/backend-deployment.yaml
                         kubectl apply -f k8s/frontend-deployment.yaml
                         kubectl apply -f k8s/ingress.yaml
+                    """
+                    
+                    // Mettre à jour les images avec la version du build
+                    sh """
+                        kubectl set image deployment/backend backend=${BACKEND_IMAGE}:${VERSION} -n portfolio || true
+                        kubectl set image deployment/frontend frontend=${FRONTEND_IMAGE}:${VERSION} -n portfolio || true
                     """
                     
                     // Attendre que les pods soient prêts
@@ -171,10 +154,24 @@ pipeline {
                     
                     // Afficher l'état
                     sh 'kubectl get all -n portfolio'
+                    sh 'kubectl get ingress -n portfolio'
+                    
+                    // Récupérer l'URL du frontend à surveiller
+                    def ingressHost = sh(
+                        script: "kubectl get ingress portfolio-ingress -n portfolio -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || true",
+                        returnStdout: true
+                    ).trim()
+                    def ingressAddr = sh(
+                        script: "kubectl get ingress portfolio-ingress -n portfolio -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true",
+                        returnStdout: true
+                    ).trim()
+                    
+                    env.FRONTEND_URL = ingressHost ? "http://${ingressHost}" : "http://portfolio.local"
+                    env.FRONTEND_INGRESS_ADDR = ingressAddr
+                    echo "Frontend à surveiller : ${env.FRONTEND_URL} (ingress: ${ingressAddr})"
                 }
             }
         }
-        */
         
         stage('Deploy to AWS EKS with Terraform') {
             when {
@@ -317,10 +314,21 @@ EOF
                     <ul>
                         <li><a href="http://localhost:9000/dashboard?id=portfolio-cicd">Rapport SonarQube</a></li>
                         <li><a href="${env.BUILD_URL}">Détails du build Jenkins</a></li>
-                        ${params.DEPLOY_TARGET == 'kubernetes' ? '<li><a href="http://portfolio.local">Application Kubernetes</a></li>' : ''}
                         ${params.DEPLOY_TARGET == 'terraform' ? '<li>Application déployée sur AWS EKS - Voir logs pour LoadBalancer URL</li>' : ''}
                         ${params.DEPLOY_TARGET == 'docker-compose' ? '<li><a href="http://localhost:3000">Application Docker Compose</a></li>' : ''}
                     </ul>
+                    ${params.DEPLOY_TARGET == 'kubernetes' ? """
+                    <hr>
+                    <h3>🖥️ Application Frontend à surveiller</h3>
+                    <p>Le déploiement Kubernetes est terminé. Surveillez l'application frontend à l'URL suivante :</p>
+                    <p style="font-size: 16px;"><strong><a href="${env.FRONTEND_URL}">${env.FRONTEND_URL}</a></strong></p>
+                    <ul>
+                        <li><strong>URL Frontend:</strong> ${env.FRONTEND_URL}</li>
+                        <li><strong>Adresse Ingress:</strong> ${env.FRONTEND_INGRESS_ADDR ?: 'N/A (ajouter portfolio.local dans /etc/hosts)'}</li>
+                        <li><strong>Namespace:</strong> portfolio</li>
+                    </ul>
+                    <p>👉 Ajoutez cette URL comme cible dans Prometheus/Blackbox Exporter pour la supervision.</p>
+                    """ : ''}
                 """,
                 to: 'ousinfaye4@gmail.com',
                 mimeType: 'text/html'
