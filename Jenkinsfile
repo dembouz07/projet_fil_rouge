@@ -133,6 +133,16 @@ pipeline {
                     // Créer/mettre à jour les ressources
                     sh """
                         kubectl apply -f k8s/namespace.yaml
+                    """
+                    
+                    // Nettoyage des déploiements conflictuels (anciennes versions
+                    // incompatibles : PVC non redimensionnable + env value vs valueFrom)
+                    sh """
+                        kubectl delete deployment mongodb backend frontend -n portfolio --ignore-not-found=true --wait=true
+                        kubectl delete pvc mongodb-pvc -n portfolio --ignore-not-found=true --wait=true
+                    """
+                    
+                    sh """
                         kubectl apply -f k8s/mongodb-deployment.yaml
                         kubectl apply -f k8s/backend-deployment.yaml
                         kubectl apply -f k8s/frontend-deployment.yaml
