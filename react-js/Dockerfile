@@ -4,9 +4,6 @@ FROM node:20.18.1-alpine3.20 AS build
 # Installer les dépendances système nécessaires
 RUN apk add --no-cache python3 make g++
 
-# Créer utilisateur pour le build
-RUN addgroup -g 1001 nodejs && adduser -S -u 1001 nodejs
-
 WORKDIR /app
 
 # Copier uniquement les fichiers de dépendances d'abord (pour le cache)
@@ -18,15 +15,13 @@ RUN npm ci --prefer-offline --no-audit
 # Copier le reste du code
 COPY . .
 
-# Créer le dossier build et donner les permissions
-RUN mkdir -p build && chown -R nodejs:nodejs /app
-
-# Passer à l'utilisateur non-root
-USER nodejs
-
 # Build React avec optimisations
+# NOTE: l'étape de build s'exécute en root (image jetable) pour éviter
+# un "chown -R" coûteux sur node_modules qui surchargeait le démon Docker.
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
+# Limiter la mémoire de Node pour éviter l'OOM du moteur Docker (WSL2)
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm run build
 
 # Étape 2: Production avec Nginx (image finale légère)
